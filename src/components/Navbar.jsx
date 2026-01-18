@@ -85,7 +85,7 @@ const Navbar = () => {
             </button>
           ) : (
             <Link
-              to="/login"
+              to="/signup"
               className="text-Brown font-normal hover:text-Elegant-Gold transition duration-300 text-2xl"
             >
               {/* <FaSignInAlt className="inline mr-1" />  */}
