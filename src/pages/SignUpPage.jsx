@@ -53,7 +53,7 @@ const SignUpPage = () => {
     }
 
     try {
-      const response = await fetch("https://errandgirlie-backend.onrender.com/api/v1/users/register", {
+      const response = await fetch("https://errandgirlie-backend.onrender.com/api/v1/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
