@@ -197,9 +197,10 @@ const SignUpPage = () => {
         <div className="text-center mt-6">
           <p className="text-sm text-Elegant-Gold">
             Already have an account?{" "}
-            <a href="/login" className="text-Brown hover:text-Elegant-Gold font-bold">
+            <Link
+            to="/login" className="text-Brown hover:text-Elegant-Gold font-bold">
               Login here
-            </a>
+            </Link>
           </p>
         </div>
       </div>
