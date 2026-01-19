@@ -12,25 +12,35 @@ const Navbar = () => {
 
   // Check authenticated user
   const checkAuth = async () => {
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (!storedUser) {
-        setUser(null);
-        return;
-      }
-
-      const response = await fetch(`/api/v1/users/${storedUser.id}`);
-      if (!response.ok) throw new Error("User not authenticated");
-
-      const userData = await response.json();
-      localStorage.setItem("currentUser", JSON.stringify(userData));
-      setUser(userData);
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      localStorage.removeItem("currentUser");
+  try {
+    const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+    if (!storedUser) {
       setUser(null);
+      return;
     }
-  };
+
+    const response = await fetch(
+      `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser.id}`,
+      {
+        credentials: "include" // ✅ send cookies/session if backend uses them
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "User not authenticated");
+    }
+
+    const userData = await response.json();
+    localStorage.setItem("currentUser", JSON.stringify(userData));
+    setUser(userData);
+  } catch (error) {
+    console.error("Auth check failed:", error);
+    localStorage.removeItem("currentUser");
+    setUser(null);
+  }
+};
+
 
   useEffect(() => {
     checkAuth();
