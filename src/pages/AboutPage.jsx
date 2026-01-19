@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+
 
 const AboutPage = () => {
   return (
@@ -61,12 +63,12 @@ At <span className="font-semibold text-Elegant-Gold">LuxShoppers</span>, our mis
           </h2>
           <p className="text-xl leading-relaxed mb-8 max-w-3xl mx-auto animate__animated animate__fadeIn">
 At LuxShoppers, we simplify your day with seamless, reliable errand solutions tailored to your lifestyle. Focus on your goals — we’ll take care of the rest with the excellence you deserve.          </p>
-          <a
-            href="/contact"
+          <Link
+            to="/contact"
             className="bg-white text-Brown font-bold py-3 px-8 rounded-xl shadow-lg transform hover:bg-Brown hover:text-white transition duration-300"
           >
             Get in Touch
-          </a>
+          </Link>
         </section>
 
         <section className="bg-gray-100 shadow-lg rounded-xl p-8 md:p-12 space-y-8">
