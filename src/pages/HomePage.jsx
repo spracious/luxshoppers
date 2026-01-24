@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import services from "../../db.json"; 
 
 const DELIVERY_CHARGES = {
@@ -17,28 +18,47 @@ const parsePrice = (price) => {
 const HomePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
   const storedUser = localStorage.getItem("user");
-  const userName = storedUser ? JSON.parse(storedUser).name : "Valued Customer";
-const customer =  {
-  email:JSON.parse(storedUser).email,
-  phone:JSON.parse(storedUser).phone
-}
+  const parsedUser = storedUser ? JSON.parse(storedUser) : {};
+  
+  const userName = parsedUser.name || "Valued Customer";
+  const customer =  {
+    email: parsedUser.email || "",
+    phone: parsedUser.phone || ""
+  };
 
 // const customer =  JSON.parse(localStorage.getItem("user") || "{}")
   const [selectedService, setSelectedService] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [customerDetails, setCustomerDetails] = useState({
+  const [step, setStep] = useState(1);
+  const [totalCost, setTotalCost] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false); 
+    const [customerDetails, setCustomerDetails] = useState({
     address: "",
     email:customer.email,
     phoneNumber: customer.phone,
     location: "Abuja", 
     description: "",
   });
-  const [step, setStep] = useState(1);
-  const [totalCost, setTotalCost] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false); 
+
+    const calculateTotal = () => {
+    const voucherCost = selectedVoucher
+      ? parsePrice(selectedVoucher.price)
+      : customAmount
+      ? Number(customAmount)
+      : 0;
+  
+    const deliveryCharge = DELIVERY_CHARGES[customerDetails.location] || 0;
+    const serviceCharge = voucherCost * 0.10;
+  
+    const total = voucherCost + serviceCharge + deliveryCharge;
+    setTotalCost(total);
+  };
+
 
   
   const handleServiceSelect = (service) => {
@@ -57,30 +77,15 @@ const customer =  {
     setCustomAmount(value);
     // setCustomAmount(value >= 150000 ? value : "");
   };
-  
 
-  const calculateTotal = () => {
-    const voucherCost = selectedVoucher
-      ? parsePrice(selectedVoucher.price)
-      : customAmount
-      ? Number(customAmount)
-      : 0;
-  
-    const deliveryCharge = DELIVERY_CHARGES[customerDetails.location] || 0;
-    const serviceCharge = voucherCost * 0.05;
-  
-    const total = voucherCost + serviceCharge + deliveryCharge;
-    setTotalCost(total);
-  };
-  
-  
-  const handleChange = (e) => {
+      const handleChange = (e) => {
     const { name, value } = e.target;
     setCustomerDetails((prevDetails) => ({
       ...prevDetails,
       [name]: value,
     }));
   };
+  
 
   const handlePay = () => {
     calculateTotal();
@@ -113,6 +118,55 @@ const customer =  {
   handler.openIframe();
 };
 
+
+  /* ---------------- SAVE TO BACKEND ---------------- */
+  const saveOrderToBackend = async (reference) => {
+    try {
+    const payload = {
+  user: {
+    name: userName,
+    email: customerDetails.email,
+    phone: customerDetails.phoneNumber,
+    address: customerDetails.address,
+    location: customerDetails.location,
+    errandDescription: customerDetails.description,
+  },
+     service: selectedService
+        ? {
+            id: selectedService.id,
+            name: selectedService.name,
+            // items: selectedItems, // optional array of items user selected
+          }
+        : null,
+      voucher: selectedVoucher
+        ? {
+            id: selectedVoucher.id,
+            name: selectedVoucher.name,
+        // price: Number(selectedVoucher.price), // <--- convert to number
+      }
+    : { name: "Custom Amount", price: Number(customAmount) }, // <--- convert to number
+  amount: Number(totalCost), // <--- convert to number
+  status: "success",
+  transactionId: reference,
+  paymentMethod: "Paystack",
+};
+
+
+      await axios.post(
+        "https://errandgirlie-backend.onrender.com/api/v1/payments/generate",
+        payload
+      );
+
+      alert("Payment successful & order recieved!");
+      setIsModalOpen(false);
+      setStep(1);
+     navigate("/errands"); // ✅ Navigate to errands page 
+    } catch (err) {
+      console.error(err);
+      alert("Payment successful but saving failed");
+    }
+  };
+
 const handleConfirmPayment = () => {
   if (!totalCost) {
     alert("Invalid amount");
@@ -127,13 +181,64 @@ const handleConfirmPayment = () => {
     email,
     phoneNumber,
     (response) => {
-      alert(`Payment Successful! Reference: ${response.reference}`);
+      saveOrderToBackend(response.reference);
     },
     () => {
       alert("Payment not completed.");
     }
   );
 };
+
+
+
+// ... imports and other code ...
+
+//   const saveOrderToBackend = async (reference) => {
+//     try {
+//       // 1. Construct the payload to match your backend's expectation
+//       const payload = {
+//         user: {
+//           name: userName, // From localStorage
+//           email: customerDetails.email,
+//           phone: customerDetails.phoneNumber,
+//           address: customerDetails.address,
+//           location: customerDetails.location,
+//           errandDescription: customerDetails.description, // Storing the errand here
+//         },
+//         voucher: selectedVoucher
+//           ? {
+//               id: selectedVoucher.id,
+//               name: selectedVoucher.name,
+//               price: selectedVoucher.price,
+//             }
+//           : { name: "Custom Amount", price: customAmount },
+//         amount: totalCost,
+//         status: "success", // We mark as success because Paystack verified it
+//         transactionId: reference, // The Paystack Reference
+//         paymentMethod: "Paystack",
+//       };
+
+//       console.log("Sending Payload:", payload);
+
+//       // 2. Send to your specific endpoint (/api/payment/generate)
+//       const response = await axios.post(
+//   `http://localhost:10000/api/v1/payments/generate`,
+//   payload
+// );
+
+
+//       if (response.status === 201) {
+//         alert("Payment Successful & Order Saved!");
+//         setIsModalOpen(false);
+//         setStep(1); // Reset to home
+//       }
+//     } catch (error) {
+//       console.error("Error saving order:", error);
+//       alert("Payment successful, but failed to save to database.");
+//     }
+//   };
+
+  // ... rest of the component (handlePayWithPaystack, etc.) ...
 
   
   
@@ -381,11 +486,11 @@ const handleConfirmPayment = () => {
 
       
 <p>
-  <strong>Service Charge (5%):</strong> ₦
+  <strong>Service Charge (10%):</strong> ₦
   {selectedVoucher
-    ? (parsePrice(selectedVoucher.price) * 0.05).toLocaleString()
+    ? (parsePrice(selectedVoucher.price) * 0.10).toLocaleString()
     : customAmount
-    ? (Number(customAmount) * 0.05).toLocaleString()
+    ? (Number(customAmount) * 0.10).toLocaleString()
     : "0"}
 </p>
 

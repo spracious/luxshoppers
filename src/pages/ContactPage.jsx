@@ -149,7 +149,7 @@ const ContactPage = () => {
 
   <div className="space-y-4">
     <p className="text-Brown">
-      <strong className="text-Elegant-Gold">Email:</strong> errandgirlie24@gmail.com
+      <strong className="text-Elegant-Gold">Email:</strong> luxshoppers247@gmail.com
     </p>
     <p className="text-Brown">
       <strong className="text-Elegant-Gold">Address:</strong> Gwarimpa District, Abuja, Nigeria.
