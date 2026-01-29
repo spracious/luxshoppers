@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../images/luxshopper logo.png";
-import { FaSignInAlt } from "react-icons/fa";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -12,35 +11,29 @@ const Navbar = () => {
 
   // Check authenticated user
   const checkAuth = async () => {
-  try {
-    const storedUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (!storedUser) {
-      setUser(null);
-      return;
-    }
-
-    const response = await fetch(
-      `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser.id}`,
-      {
-        credentials: "include" // ✅ send cookies/session if backend uses them
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+      if (!storedUser) {
+        setUser(null);
+        return;
       }
-    );
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || "User not authenticated");
+      const response = await fetch(
+        `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser.id}`,
+        { credentials: "include" }
+      );
+
+      if (!response.ok) throw new Error("User not authenticated");
+
+      const userData = await response.json();
+      localStorage.setItem("currentUser", JSON.stringify(userData));
+      setUser(userData);
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      localStorage.removeItem("currentUser");
+      setUser(null);
     }
-
-    const userData = await response.json();
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-    setUser(userData);
-  } catch (error) {
-    console.error("Auth check failed:", error);
-    localStorage.removeItem("currentUser");
-    setUser(null);
-  }
-};
-
+  };
 
   useEffect(() => {
     checkAuth();
@@ -58,55 +51,65 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="p-3 pe-2 ps-2 h-15 w-full shadow-2xl rounded-x2 bg-white">
-      <div className="container mx-auto flex justify-between items-center">
+    <nav className="bg-white shadow-lg p-3">
+      <div className="container mx-auto flex items-center justify-between">
         {/* Logo */}
         <Link to="/">
-          <img src={logo} alt="logo" className="w-32 mt-4" />
+          <img src={logo} alt="LuxShoppers" className="w-32 mt-4" />
         </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden mt-5 md:flex space-x-6 items-center">
+        {/* Center Menu */}
+        <div className="hidden md:flex mt-8 space-x-10 items-center">
           <Link
             to="/about"
-            className="text-Brown font-normal hover:text-Elegant-Gold transition duration-300 text-2xl"
+            className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
           >
             About
           </Link>
           <Link
             to="/services"
-            className="text-Brown font-normal hover:text-Elegant-Gold transition duration-300 text-2xl"
+            className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
           >
             Services
           </Link>
           <Link
             to="/contact"
-            className="text-Brown font-normal hover:text-Elegant-Gold transition duration-300 text-2xl"
+            className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
           >
             Contact
           </Link>
+        </div>
 
+        {/* Right Menu */}
+        <div className="hidden md:flex mt-8 space-x-4 items-center">
+          {user && (
+            <Link
+              to="/dashboard"
+            className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
+            >
+              Dashboard
+            </Link>
+          )}
           {user ? (
             <button
               onClick={handleLogout}
-              className="text-Brown font-normal hover:text-orangee transition duration-300 text-2xl"
+              className="bg-red-600 text-white px-4 py-2 rounded-xl shadow-lg transform hover:bg-red-500 transition duration-300"
             >
-              LogOut
+              Logout
             </button>
           ) : (
             <Link
-              to="/signup"
-              className="text-Brown font-normal hover:text-Elegant-Gold transition duration-300 text-2xl"
+              to="/login"
+            className="bg-Brown text-white py-2 font-bold px-4 rounded-xl shadow-lg transform hover:bg-Elegant-Gold hover:text-Brown transition duration-300"
             >
-              {/* <FaSignInAlt className="inline mr-1" />  */}
-              SignUp
+              Sign In
             </Link>
           )}
         </div>
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden text-Brown font-bold focus:outline-none"
+          className="md:hidden text-Brown focus:outline-none"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <svg
@@ -127,51 +130,55 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu */}
-      <div className={`md:hidden ${menuOpen ? "block" : "hidden"} mt-5 space-y-2`}>
-        <Link
-          to="/"
-          className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
-          onClick={() => setMenuOpen(false)}
-        >
-          Home
-        </Link>
-        <Link
-          to="/services"
-          className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
-          onClick={() => setMenuOpen(false)}
-        >
-          Services
-        </Link>
+      <div className={`md:hidden ${menuOpen ? "block" : "hidden"} mt-3 space-y-2 justify-between`}>
         <Link
           to="/about"
-          className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
+          className="block text-Brown hover:text-Elegant-Gold transition duration-300"
           onClick={() => setMenuOpen(false)}
         >
           About
         </Link>
         <Link
+          to="/services"
+          className="block text-Brown hover:text-Elegant-Gold transition duration-300"
+          onClick={() => setMenuOpen(false)}
+        >
+          Services
+        </Link>
+        <Link
           to="/contact"
-          className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
+          className="block text-Brown hover:text-Elegant-Gold transition duration-300"
           onClick={() => setMenuOpen(false)}
         >
           Contact
         </Link>
 
+        {user && (
+          <Link
+            to="/dashboard"
+          className="block text-Brown hover:text-Elegant-Gold transition duration-300"
+            onClick={() => setMenuOpen(false)}
+          >
+            Dashboard
+          </Link>
+        )}
+
         {user ? (
           <button
             onClick={handleLogout}
-          className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
+            className="bg-red-600 mt-10 text-white px-4 py-2 rounded hover:bg-red-500 transition w-full text-left"
           >
             Logout
           </button>
         ) : (
-          <Link
-            to="/login"
-            className="block text-Brown font-normal hover:text-Elegant-Gold transition duration-300"
-            onClick={() => setMenuOpen(false)}
-          >
-            Sign In
-          </Link>
+        <Link
+  to="/login"
+  className="bg-Brown text-white px-4 py-2 rounded hover:bg-Elegant-Gold transition w-full text-left mt-16"
+  onClick={() => setMenuOpen(false)}
+>
+  Sign In
+</Link>
+
         )}
       </div>
     </nav>
@@ -179,10 +186,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-
-
-
-
-
-

@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import './App.css'
+import { useState, useEffect } from 'react';
+import './App.css';
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import axios from 'axios';
+
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import ServicesPage from "./pages/ServicesPage"; 
@@ -13,9 +15,23 @@ import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import TrackErrandsSection from './pages/TrackErrandsSection';
 
-
 function App() {
-  
+
+  // Load current user on app mount (fix Paystack redirect issue)
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      axios.get("https://errandgirlie-backend.onrender.com/api/v1/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => {
+        localStorage.setItem("currentUser", JSON.stringify(res.data.user));
+        window.dispatchEvent(new Event("storage")); // optional: triggers components listening for updates
+      })
+      .catch(err => console.error("Failed to fetch user after redirect", err));
+    }
+  }, []);
+
   return (
     <Router>
       <Navbar />
@@ -31,7 +47,6 @@ function App() {
         <Route path="/errands" element={<TrackErrandsSection/>} />
       </Routes>
     </Router>
-    
   );
 }
 

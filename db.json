@@ -300,6 +300,156 @@
           "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
         }
       ]
+    },
+     {
+      "id": 7,
+      "name": "Global Shipping",
+      "description": "We handle international procurement and shipping, ensuring your global orders arrive safely, swiftly, and stress-free.",
+      "price": "₦2500 - ₦7000",
+      "inventory": [
+        {
+          "id": "bronze",
+          "name": "Bronze",
+          "price": "₦30,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "silver",
+          "name": "Silver",
+          "price": "₦50,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "gold",
+          "name": "Gold",
+          "price": "₦70,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "diamond",
+          "name": "Diamond",
+          "price": "₦100,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "platinum",
+          "name": "Platinum",
+          "price": "₦150,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "",
+          "name": "Unlimited",
+          "price": "₦150,000+",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        }
+      ]
+    },
+      {
+      "id": 8,
+      "name": "Curated Gift Sourcing",
+      "description": "We source thoughtful, premium gifts that leave a lasting impression — beautifully wrapped and delivered with care.",
+      "price": "₦2500 - ₦7000",
+      "inventory": [
+        {
+          "id": "bronze",
+          "name": "Bronze",
+          "price": "₦30,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "silver",
+          "name": "Silver",
+          "price": "₦50,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "gold",
+          "name": "Gold",
+          "price": "₦70,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "diamond",
+          "name": "Diamond",
+          "price": "₦100,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "platinum",
+          "name": "Platinum",
+          "price": "₦150,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "",
+          "name": "Unlimited",
+          "price": "₦150,000+",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        }
+      ]
+    },
+     {
+      "id": 9,
+      "name": "Bespoke Luxury Fashion Shopping",
+      "description": "Access exclusive fashion pieces tailored to your style. We source and deliver high-end clothing and accessories with concierge-level service and elegance.",
+      "price": "₦2500 - ₦7000",
+      "inventory": [
+        {
+          "id": "bronze",
+          "name": "Bronze",
+          "price": "₦30,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "silver",
+          "name": "Silver",
+          "price": "₦50,000",
+          "available": 8,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "gold",
+          "name": "Gold",
+          "price": "₦70,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "diamond",
+          "name": "Diamond",
+          "price": "₦100,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "platinum",
+          "name": "Platinum",
+          "price": "₦150,000",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        },
+        {
+          "id": "",
+          "name": "Unlimited",
+          "price": "₦150,000+",
+          "available": 5,
+          "image": "https://i0.wp.com/revolfoods.com/wp-content/uploads/2021/10/yam-pona-.png?fit=1000%2C1000&ssl=1"
+        }
+      ]
     }
    
   ]

@@ -16,7 +16,7 @@ const DashboardPage = () => {
   const canPlaceOrder = isWithinOperationalHours();
 
   return (
-    <div className="max-w-4xl mx-auto min-h-screen bg-white shadow-md rounded-md p-6">
+    <div className="max-w-4xl mx-auto mt-12 min-h-screen bg-white shadow-md rounded-md p-6">
       <h1 className="text-2xl font-bold text-Brown mb-10">
         Welcome to Your Dashboard,{" "}
         <span className="text-Elegant-Gold font-bold">{userName}!</span>

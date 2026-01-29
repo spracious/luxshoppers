@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { FaFacebook, FaTwitter, FaInstagram, FaTiktok, FaLinkedin, FaWhatsapp } from "react-icons/fa";
 
+const FORMSPREE_URL = "https://formspree.io/f/mqebeozw"; // 👈 replace
+
+
 const ContactPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     message: "",
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -38,18 +42,42 @@ const ContactPage = () => {
     }
 
     setError(null);
+    setSuccessMessage(null);
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); 
-      setSuccessMessage("Your message has been successfully submitted!");
+      const response = await fetch(FORMSPREE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Submission failed");
+      }
+
+      setSuccessMessage("Your message has been sent successfully 🎉");
       setFormData({ name: "", email: "", message: "" });
     } catch (err) {
-      setError("There was an error submitting your message. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  //   try {
+  //     await new Promise((resolve) => setTimeout(resolve, 2000)); 
+  //     setSuccessMessage("Your message has been successfully submitted!");
+  //     setFormData({ name: "", email: "", message: "" });
+  //   } catch (err) {
+  //     setError("There was an error submitting your message. Please try again.");
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   return (
     <div className="bg-Ivory-White min-h-screen flex flex-col">
@@ -130,7 +158,7 @@ const ContactPage = () => {
                 className={`w-full py-3 text-white font-medium rounded-md ${
                   isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-Elegant-Gold hover:bg-Elegant-Gold"
                 }`}
-                disabled={isSubmitting}
+                // disabled={isSubmitting}
               >
                 {isSubmitting ? "Submitting..." : "Send Message"}
               </button>

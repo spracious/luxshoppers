@@ -1,91 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const TrackErrandsSection = () => {
   const navigate = useNavigate();
-
- 
-  const [errands, setErrands] = useState({
-    pending: [
-      {
-        id: 1,
-        title: "Fruits & Vegetables",
-        description: "1 basket of Tomatoes, Half basket of pepper, 10 cucumbers, 4 cabbages, 5 big tin of sweet corn.",
-        assignedTo: "Number 5",
-        assignedTeam: "Event Planning Team",
-        priority: "High",
-        location: "Hilton Conference Center, Abuja",
-        estimatedCost: "Silver",
-        dueDate: "2024-12-22",
-      },
-      {
-        id: 2,
-        title: "Local Market Treasures",
-        description: "Half bag of foreign rice, 5 mudus of beans, 1 painter of crayfish, 5 tubbers of yam, 1 basket of irish potatoes, 1 big bunch of ripe plaintains.",
-        assignedTo: "Number 2",
-        assignedTeam: "Procurement Team",
-        priority: "Medium",
-        location: "New Head Office, Maitama",
-        estimatedCost: "Diamond",
-        dueDate: "2024-12-30",
-      },
-      {
-        id: 3,
-        title: "Grocery Shopping",
-        description: "5 medium blue-band, 1 roll of tissue, 3 packs of 5alive 1L, 10 packs of elim bottle water 50cl.",
-        assignedTo: "Number 7",
-        assignedTeam: "Travel Management Team",
-        priority: "High",
-        location: "Abuja International Airport",
-        estimatedCost: "Unlimited",
-        dueDate: "2024-12-18",
-      },
-    ],
-    completed: [
-        {
-          id: 1,
-          title: "Fruits & Vegetables",
-          description: "1 basket of Tomatoes, Half basket of pepper, 10 cucumbers, 4 cabbages, 5 big tin of sweet corn.",
-          assignedTo: "Number 5",
-          assignedTeam: "Event Planning Team",
-          priority: "High",
-          location: "Hilton Conference Center, Abuja",
-          estimatedCost: "Silver",
-          dueDate: "2024-12-22",
-        },
-        {
-          id: 2,
-          title: "Local Market Treasures",
-          description: "Half bag of foreign rice, 5 mudus of beans, 1 painter of crayfish, 5 tubbers of yam, 1 basket of irish potatoes, 1 big bunch of ripe plaintains.",
-          assignedTo: "Number 2",
-          assignedTeam: "Procurement Team",
-          priority: "Medium",
-          location: "New Head Office, Maitama",
-          estimatedCost: "Diamond",
-          dueDate: "2024-12-30",
-        },
-        {
-          id: 3,
-          title: "Grocery Shopping",
-          description: "5 medium blue-band, 1 roll of tissue, 3 packs of 5alive 1L, 10 packs of elim bottle water 50cl.",
-          assignedTo: "Number 7",
-          assignedTeam: "Travel Management Team",
-          priority: "High",
-          location: "Abuja International Airport",
-          estimatedCost: "Unlimited",
-          dueDate: "2024-12-18",
-        },
-      ],
-  });
-
-
+  const [errands, setErrands] = useState({ pending: [], completed: [] });
   const [activeTab, setActiveTab] = useState("pending");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 2;
+  const itemsPerPage = 5;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchErrands = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      // ✅ Get user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+      if (!currentUser?._id) {
+        setError("User not logged in. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Use MongoDB ObjectId for API
+      const response = await axios.get(
+        `https://errandgirlie-backend.onrender.com/api/v1/errands/${currentUser._id}`
+      );
+
+      if (response.data.errands) {
+        const pending = response.data.errands.filter((e) => e.status === "pending");
+        const completed = response.data.errands.filter((e) => e.status === "completed");
+        setErrands({ pending, completed });
+      }
+    } catch (err) {
+      console.error("Error fetching errands:", err);
+      setError("Failed to load errands. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchErrands();
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const currentErrands = errands[activeTab];
@@ -96,9 +60,7 @@ const TrackErrandsSection = () => {
   );
 
   const changePage = (newPage) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
+    if (newPage > 0 && newPage <= totalPages) setCurrentPage(newPage);
   };
 
   return (
@@ -123,55 +85,71 @@ const TrackErrandsSection = () => {
         </button>
       </div>
 
-      <div className="overflow-x-auto mt-6">
-        {paginatedErrands.length > 0 ? (
-          <table className="min-w-full bg-gray-100 border border-gray-300 rounded-md shadow-md">
-            <thead>
-              <tr className="bg-Elegant-Gold">
-                <th className="py-3 px-6 text-left text-Brown">Services</th>
-                <th className="py-3 px-6 text-left text-Brown">Errands</th>
-                <th className="py-3 px-6 text-left text-Brown">Agent</th>
-                <th className="py-3 px-6 text-left text-Brown">Location</th>
-                <th className="py-3 px-6 text-left text-Brown">Voucher</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedErrands.map((errand) => (
-                <tr key={errand.id} className="border-b hover:bg-gray-200">
-                  <td className="py-3 px-6">{errand.title}</td>
-                  <td className="py-3 px-6">{errand.description}</td>
-                  <td className="py-3 px-6">{errand.assignedTo}</td>
-                  <td className="py-3 px-6">{errand.location}</td>
-                  <td className="py-3 px-6">{errand.estimatedCost || "N/A"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-red-500 mt-4">No errands available in this tab.</p>
-        )}
-      </div>
+      {loading ? (
+        <p className="mt-6 text-gray-700">Loading errands...</p>
+      ) : error ? (
+        <p className="mt-6 text-red-500">{error}</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto mt-6">
+            {paginatedErrands.length > 0 ? (
+              <table className="min-w-full bg-gray-100 border border-gray-300 rounded-md shadow-md">
+                <thead>
+                  <tr className="bg-Elegant-Gold">
+                    <th className="py-3 px-6 text-left text-Brown">Service</th>
+                    <th className="py-3 px-6 text-left text-Brown">Errand</th>
+                    <th className="py-3 px-6 text-left text-Brown">Location</th>
+                    <th className="py-3 px-6 text-left text-Brown">Voucher</th>
+                                        <th className="py-3 px-6 text-left text-Brown">Amount</th>
+                    <th className="py-3 px-6 text-left text-Brown">Status</th>
+                  </tr>
+                </thead>
+              <tbody>
+        {paginatedErrands.map((errand) => (
+          <tr key={errand._id} className="border-b hover:bg-gray-200">
+            <td className="py-3 px-6">{errand.service}</td>
+            <td className="py-3 px-6">{errand.errandDescription}</td>
+            <td className="py-3 px-6">{errand.location}</td>
+           <td className="py-3 px-6">
+  {errand.voucher ? errand.voucher.category : "N/A"}
+</td>
+<td className="py-3 px-6">
+  ₦{Number(errand.estimatedCost).toLocaleString()}
+</td>
 
-      {paginatedErrands.length > 0 && (
-        <div className="flex justify-center items-center mt-6 space-x-2">
-          <button
-            onClick={() => changePage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100"
-          >
-            Prev
-          </button>
-          <span className="text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => changePage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100"
-          >
-            Next
-          </button>
-        </div>
+
+            <td className="py-3 px-6">{errand.status}</td>
+          </tr>
+        ))}
+      </tbody>
+              </table>
+            ) : (
+              <p className="text-red-500 mt-4">No errands available in this tab.</p>
+            )}
+          </div>
+
+          {paginatedErrands.length > 0 && (
+            <div className="flex justify-center items-center mt-6 space-x-2">
+              <button
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100"
+              >
+                Prev
+              </button>
+              <span className="text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <button
@@ -185,12 +163,3 @@ const TrackErrandsSection = () => {
 };
 
 export default TrackErrandsSection;
-
-
-
-
-
-
-
-
-

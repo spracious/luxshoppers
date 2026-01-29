@@ -1,37 +1,34 @@
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import services from "../../db.json"; 
 
 const DELIVERY_CHARGES = {
-  Abuja: 4000,
-  Lagos: 3500,
+  Abuja: 3000,
+  Lagos: 5000,
+  Minna: 3500,
+  Kaduna: 4000,
+  Kano: 4500,
+  Nassarawa: 3500,
   "Other Locations": 5000,
 };
 
-const parsePrice = (price) => {
-
-  return Number(price.replace(/[^0-9]/g, ""));
-};
+const parseAmount = (amount) => Number(amount || 0);
 
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-  const storedUser = localStorage.getItem("user");
-  const parsedUser = storedUser ? JSON.parse(storedUser) : {};
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   
-  const userName = parsedUser.name || "Valued Customer";
+  const userName = currentUser.name || "Valued Customer";
   const customer =  {
-    email: parsedUser.email || "",
-    phone: parsedUser.phone || ""
+    email: currentUser.email || "",
+    phone: currentUser.phone || "",
   };
 
-// const customer =  JSON.parse(localStorage.getItem("user") || "{}")
   const [selectedService, setSelectedService] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
+   const [vouchers, setVouchers] = useState([]);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [step, setStep] = useState(1);
@@ -45,38 +42,71 @@ const HomePage = () => {
     description: "",
   });
 
-    const calculateTotal = () => {
-    const voucherCost = selectedVoucher
-      ? parsePrice(selectedVoucher.price)
-      : customAmount
-      ? Number(customAmount)
-      : 0;
+const calculateTotal = () => {
+  const voucherCost = getVoucherCost();
+
+  const deliveryCharge = DELIVERY_CHARGES[customerDetails.location] || 0;
+  const serviceCharge = voucherCost * 0.1;
+
+  const total = voucherCost + serviceCharge + deliveryCharge;
+
+  setTotalCost(total);
+};
+
+useEffect(() => {
+  calculateTotal();
+}, [selectedVoucher, customAmount]);
+
   
-    const deliveryCharge = DELIVERY_CHARGES[customerDetails.location] || 0;
-    const serviceCharge = voucherCost * 0.10;
-  
-    const total = voucherCost + serviceCharge + deliveryCharge;
-    setTotalCost(total);
-  };
+  // 🔹 Fetch vouchers from backend
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      try {
+        const res = await axios.get(
+          "https://errandgirlie-backend.onrender.com/api/v1/vouchers"
+        );
+        setVouchers(res.data);
+        // console.log("vouchers")
+      } catch (error) {
+        console.error("Failed to fetch vouchers:", error);
+      }
+    };
+
+    fetchVouchers();
+  }, []);
+
+  const getVoucherCost = () => {
+  if (!selectedVoucher) return Number(customAmount) || 0;
+
+  if (selectedVoucher.isUnlimited) {
+    return Number(customAmount) || 0;
+  }
+
+  return Number(selectedVoucher.amount) || 0;
+};
 
 
-  
+ 
   const handleServiceSelect = (service) => {
     setSelectedService(service);
+    setSelectedVoucher(null);
     setSelectedItems([]);
     setStep(2);
   };
 
-  const handleVoucherSelect = (voucherId) => {
-    const voucher = selectedService.inventory.find((item) => item.id === voucherId);
-    setSelectedVoucher(voucher);
-  };  
+const handleVoucherSelect = (voucherId) => {
+  const voucher = vouchers.find((v) => v._id === voucherId) || null;
+  setSelectedVoucher(voucher);
+  setCustomAmount(""); // reset when changing voucher
+  console.log("Selected Voucher:", voucher);
+};
+
   
-  const handleCustomAmountChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, "");
-    setCustomAmount(value);
-    // setCustomAmount(value >= 150000 ? value : "");
-  };
+ const handleCustomAmountChange = (e) => {
+  const value = e.target.value;
+  setCustomAmount(value === "" ? "" : Number(value));
+};
+
 
       const handleChange = (e) => {
     const { name, value } = e.target;
@@ -85,175 +115,156 @@ const HomePage = () => {
       [name]: value,
     }));
   };
-  
+ 
 
   const handlePay = () => {
-    calculateTotal();
     setIsModalOpen(true);
   };
 
   
 // T508235738621212
 
- const handlePayWithPaystack = (amount, email, phoneNumber, onSuccess, onFailure) => {
+const handlePayWithPaystack = (
+  amount,
+  email,
+  phoneNumber,
+  onSuccess,
+  onFailure
+) => {
+  if (!window.PaystackPop) {
+    alert("Payment service not loaded. Please refresh the page.");
+    return;
+  }
+
   const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 
   const handler = window.PaystackPop.setup({
-    key: paystackPublicKey, 
-    email: email,
-    amount: parseInt(amount, 10) * 100, 
+    key: paystackPublicKey,
+    email,
+    amount: Math.round(amount * 100),
     currency: "NGN",
     phone: phoneNumber,
-    channels: ["card", "bank", "ussd"], 
+    channels: ["card", "bank", "ussd"],
     callback: function (response) {
       console.log("Paystack Response:", response);
-      alert(`Payment Successful! Reference: ${response.reference}`);
       onSuccess(response);
     },
     onClose: function () {
-      alert("Payment was not completed");
       onFailure();
     },
   });
+
   handler.openIframe();
 };
 
 
+
   /* ---------------- SAVE TO BACKEND ---------------- */
-  const saveOrderToBackend = async (reference) => {
-    try {
-    const payload = {
-  user: {
-    name: userName,
-    email: customerDetails.email,
-    phone: customerDetails.phoneNumber,
-    address: customerDetails.address,
-    location: customerDetails.location,
-    errandDescription: customerDetails.description,
-  },
-     service: selectedService
-        ? {
-            id: selectedService.id,
-            name: selectedService.name,
-            // items: selectedItems, // optional array of items user selected
-          }
-        : null,
-      voucher: selectedVoucher
-        ? {
-            id: selectedVoucher.id,
-            name: selectedVoucher.name,
-        // price: Number(selectedVoucher.price), // <--- convert to number
-      }
-    : { name: "Custom Amount", price: Number(customAmount) }, // <--- convert to number
-  amount: Number(totalCost), // <--- convert to number
+const saveOrderToBackend = async (paymentReference) => {
+  try {
+    // ✅ Get current user from localStorage
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    if (!currentUser || !currentUser._id) throw new Error("User not logged in!");
+
+    // 1️⃣ Create errand payload
+    const errandPayload = {
+      user: currentUser._id, // Use currentUser instead of undefined "user"
+      service: selectedService?.name || "Custom Service",
+      voucher: selectedVoucher?._id || null,
+      errandDescription: customerDetails.description || "N/A",
+      location: customerDetails.location,
+      phone: customerDetails.phoneNumber,
+      address: customerDetails.address,
+      estimatedCost: totalCost,
+      paymentReference, // Pass Paystack reference here
+    };
+
+    // 2️⃣ Save errand to backend
+    const errandResponse = await axios.post(
+      "https://errandgirlie-backend.onrender.com/api/v1/errands/send",
+      errandPayload
+    );
+
+    const errandId = errandResponse.data.errand._id;
+
+    // 3️⃣ Create payment payload
+  
+  const paymentPayload = {
+  user: currentUser._id,  // ObjectId string, not object
+  errand: errandId,        // ObjectId string
+  service: { name: selectedService?.name || "Custom Service" },
+  voucher: selectedVoucher?._id || null, // only the voucher ID
+  amount: Number(totalCost) || 0,
   status: "success",
-  transactionId: reference,
+  transactionId: paymentReference,
   paymentMethod: "Paystack",
 };
 
 
-      await axios.post(
-        "https://errandgirlie-backend.onrender.com/api/v1/payments/generate",
-        payload
-      );
+    console.log("Payment Payload to Backend:", paymentPayload);
 
-      alert("Payment successful & order recieved!");
-      setIsModalOpen(false);
-      setStep(1);
-     navigate("/errands"); // ✅ Navigate to errands page 
-    } catch (err) {
-      console.error(err);
-      alert("Payment successful but saving failed");
-    }
-  };
+
+    // 4️⃣ Save payment to backend
+    await axios.post(
+      "https://errandgirlie-backend.onrender.com/api/v1/payments/generate",
+      paymentPayload
+    );
+
+    // 5️⃣ Update UI
+    alert("Payment successful & order received!");
+    setIsModalOpen(false);
+    setStep(1);
+    navigate("/errands");
+  } catch (err) {
+    console.error("Error saving order:", err);
+    alert(
+      "Payment successful but saving order failed. Please contact support."
+    );
+  }
+};
+
 
 const handleConfirmPayment = () => {
+  if (selectedVoucher?.isUnlimited) {
+    if (!customAmount || customAmount < selectedVoucher.minAmount) {
+      alert(
+        `Amount must be ₦${selectedVoucher.minAmount.toLocaleString()} or more`
+      );
+      return;
+    }
+  }
+
   if (!totalCost) {
-    alert("Invalid amount");
+    alert("Invalid payment amount");
     return;
   }
 
   const email = customerDetails?.email || "test@example.com";
   const phoneNumber = customerDetails?.phoneNumber || "08012345678";
 
-  handlePayWithPaystack(
+   handlePayWithPaystack(
     totalCost,
-    email,
-    phoneNumber,
-    (response) => {
-      saveOrderToBackend(response.reference);
-    },
-    () => {
-      alert("Payment not completed.");
-    }
+    customerDetails.email,
+    customerDetails.phoneNumber,
+    (response) => saveOrderToBackend(response.reference),
+    () => alert("Payment cancelled")
   );
 };
-
-
-
-// ... imports and other code ...
-
-//   const saveOrderToBackend = async (reference) => {
-//     try {
-//       // 1. Construct the payload to match your backend's expectation
-//       const payload = {
-//         user: {
-//           name: userName, // From localStorage
-//           email: customerDetails.email,
-//           phone: customerDetails.phoneNumber,
-//           address: customerDetails.address,
-//           location: customerDetails.location,
-//           errandDescription: customerDetails.description, // Storing the errand here
-//         },
-//         voucher: selectedVoucher
-//           ? {
-//               id: selectedVoucher.id,
-//               name: selectedVoucher.name,
-//               price: selectedVoucher.price,
-//             }
-//           : { name: "Custom Amount", price: customAmount },
-//         amount: totalCost,
-//         status: "success", // We mark as success because Paystack verified it
-//         transactionId: reference, // The Paystack Reference
-//         paymentMethod: "Paystack",
-//       };
-
-//       console.log("Sending Payload:", payload);
-
-//       // 2. Send to your specific endpoint (/api/payment/generate)
-//       const response = await axios.post(
-//   `http://localhost:10000/api/v1/payments/generate`,
-//   payload
-// );
-
-
-//       if (response.status === 201) {
-//         alert("Payment Successful & Order Saved!");
-//         setIsModalOpen(false);
-//         setStep(1); // Reset to home
-//       }
-//     } catch (error) {
-//       console.error("Error saving order:", error);
-//       alert("Payment successful, but failed to save to database.");
-//     }
-//   };
-
-  // ... rest of the component (handlePayWithPaystack, etc.) ...
-
-  
-  
 
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
       
       <header className="bg-green-800 text-green p-6 flex justify-between items-center shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+    <Link
+                to="/dashboard">
        <button
                   onClick={() => setStep(1)}
                   className="bg-gray-200 text-white px-2 py-2 rounded hover:bg-gray-600"
                 >
                   ⬅
                 </button>
+     </Link>
 
   
   <p className="text-1xl font-semibold text-Elegant-Gold">
@@ -265,7 +276,7 @@ const handleConfirmPayment = () => {
   {step === 1 && (
     <section>
       <h2 className="text-3xl text-Elegant-Gold mb-10 font-bold text-center tracking-wide">
-        Please select your choice service
+        Please select your intend service
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
   {services.services.map((service) => (
@@ -286,7 +297,7 @@ const handleConfirmPayment = () => {
           onClick={() => handleServiceSelect(service)}
           className="bg-Elegant-Gold text-white font-semibold px-6 py-3 rounded-lg hover:bg-Brown transition duration-300"
         >
-          Select Items
+          Select
         </button>
       </div>
     </div>
@@ -319,59 +330,48 @@ const handleConfirmPayment = () => {
                 ))}
               </div>
 
-              <form className="mt-6 space-y-4">
-              <div>
-  <label htmlFor="cartId" className="block text-gray-700 font-bold">
+              <form className="mt-6 py-4 space-y-4">
+
+{/* Voucher Selection */}
+<div>
+  <label className="block py-4 font-bold text-gray-700">
     Select Voucher
   </label>
+
   <select
-    id="cartId"
-    name="cartId"
-    value={selectedVoucher?.id || "unlimited"}
-    onChange={(e) => {
-      const selectedId = e.target.value;
-      if (selectedId === "unlimited") {
-        setSelectedVoucher(null);
-        setCustomAmount("");
-      } else {
-        handleVoucherSelect(selectedId);
-      }
-    }}
-    className="w-full p-2 border border-gray-300 rounded-lg text-gray-700"
+    value={selectedVoucher?._id || ""}
+    onChange={(e) => handleVoucherSelect(e.target.value)}
+    className="w-full p-2 border rounded"
   >
-    <option value="" disabled>
-      Pick a Voucher
-    </option>
-    {selectedService.inventory.map((item) => (
-      <option key={item.id} value={item.id}>
-        {item.name} - {item.price}
+    <option value="">Select a Voucher</option>
+
+    {vouchers.map((voucher) => (
+      <option key={voucher._id} value={voucher._id}>
+        {voucher.category}{" "}
+        {!voucher.isUnlimited && ` – ₦${voucher.amount.toLocaleString()}`}
+        {voucher.isUnlimited && " - ₦150,000 and above"}
       </option>
     ))}
-    <option value="unlimited">Unlimited (₦150,000+)</option>
   </select>
 </div>
 
-{selectedVoucher === null && (
+{/* Unlimited voucher input */}
+{selectedVoucher?.isUnlimited && (
   <div className="mt-4">
-    <label htmlFor="customAmount" className="block text-gray-700 font-bold">
-      Enter Amount (₦150,000 and above)
+    <label className="font-bold">
+      Enter Amount (₦{selectedVoucher.minAmount.toLocaleString()}+)
     </label>
     <input
-      id="customAmount"
       type="number"
-      min="150000"
+      min={selectedVoucher.minAmount}
       value={customAmount}
       onChange={handleCustomAmountChange}
-      placeholder="Enter your preferred amount"
-      className="w-full p-2 border border-gray-300 rounded-lg"
+      className="w-full p-2 border rounded"
     />
-    {customAmount < 150000 && customAmount !== "" && (
-      <p className="text-red-600 text-sm mt-2">
-        Amount must be ₦150,000 or more.
-      </p>
-    )}
   </div>
 )}
+
+
 
   <div>
     <label htmlFor="address" className="block text-gray-700 font-bold">
@@ -475,24 +475,24 @@ const handleConfirmPayment = () => {
     <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
       <h2 className="text-2xl font-bold text-center mb-4">Payment Details</h2>
       
-      <p>
+ <p>
   <strong>Voucher Amount:</strong> ₦
   {selectedVoucher
-    ? parsePrice(selectedVoucher.price).toLocaleString()
+    ? selectedVoucher.amount
     : customAmount
-    ? Number(customAmount).toLocaleString()
+    ? Number(customAmount)
     : "0"}
 </p>
 
-      
 <p>
   <strong>Service Charge (10%):</strong> ₦
   {selectedVoucher
-    ? (parsePrice(selectedVoucher.price) * 0.10).toLocaleString()
+    ? (selectedVoucher.amount * 0.1)
     : customAmount
-    ? (Number(customAmount) * 0.10).toLocaleString()
+    ? (Number(customAmount) * 0.1)
     : "0"}
 </p>
+
 
       
       <p>
