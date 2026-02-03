@@ -153,7 +153,8 @@ const Navbar = () => {
           Contact
         </Link>
 
-        {user && (
+   <div className="mt-10">
+         {user && (
           <Link
             to="/dashboard"
           className="block text-Brown hover:text-Elegant-Gold transition duration-300"
@@ -166,20 +167,21 @@ const Navbar = () => {
         {user ? (
           <button
             onClick={handleLogout}
-            className="bg-red-600 mt-10 text-white px-4 py-2 rounded hover:bg-red-500 transition w-full text-left"
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500 transition text-left"
           >
             Logout
           </button>
         ) : (
         <Link
   to="/login"
-  className="bg-Brown text-white px-4 py-2 rounded hover:bg-Elegant-Gold transition w-full text-left mt-16"
+  className=" mt-10 bg-Brown text-white px-4 py-2 rounded hover:bg-Elegant-Gold transition w-full text-left"
   onClick={() => setMenuOpen(false)}
 >
   Sign In
 </Link>
 
         )}
+   </div>
       </div>
     </nav>
   );
