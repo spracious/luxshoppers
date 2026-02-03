@@ -136,9 +136,9 @@ const handlePayWithPaystack = (
     return;
   }
 
-  // const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+  const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     // const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-    const paystackPublicKey = import.meta.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    // const paystackPublicKey = import.meta.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
 
   const handler = window.PaystackPop.setup({
