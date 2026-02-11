@@ -5,46 +5,52 @@ import { BASEURL } from "../constant";
 
 const TrackErrandsSection = () => {
   const navigate = useNavigate();
-  const [errands, setErrands] = useState({ pending: [], completed: [] });
+
+  // ✅ Properly structured initial state
+  const [errands, setErrands] = useState({
+    pending: [],
+    completed: [],
+    "in-progress": [],
+    overdue: [],
+  });
+
   const [activeTab, setActiveTab] = useState("pending");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
- 
-const fetchErrands = async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const fetchErrands = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    // 1️⃣ DEFINE IT FIRST (This line must come before you use currentUser)
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-    // 2️⃣ THEN YOU CAN LOG IT OR CHECK IT
-    console.log("Current User:", currentUser);
-
-    // 3️⃣ THEN CHECK IF IT EXISTS
-    if (!currentUser || !currentUser._id) {
-      setError("User not logged in. Please log in again.");
-      setLoading(false);
-      return;
-    }
-
-
-    // 4️⃣ FINALLY USE IT IN THE API CALL
-    const response = await axios.get(
-      `${BASEURL}/errands/${currentUser._id}`
-    );
-
-      if (response.data.errands) {
-        const pending = response.data.errands.filter((e) => e.status === "pending");
-        const completed = response.data.errands.filter((e) => e.status === "completed");
-                const inProgress = response.data.errands.filter((e) => e.status === "in-progress");
-        const overdue = response.data.errands.filter((e) => e.status === "overdue");
-
-        setErrands({ pending, completed, inProgress, overdue });
+      if (!currentUser || !currentUser._id) {
+        setError("User not logged in. Please log in again.");
+        return;
       }
+
+      const response = await axios.get(
+        `${BASEURL}/errands/${currentUser._id}`
+      );
+
+      const errandsData = response?.data?.errands || [];
+
+      const pending = errandsData.filter((e) => e.status === "pending");
+      const completed = errandsData.filter((e) => e.status === "completed");
+      const inProgress = errandsData.filter(
+        (e) => e.status === "in-progress"
+      );
+      const overdue = errandsData.filter((e) => e.status === "overdue");
+
+      setErrands({
+        pending,
+        completed,
+        "in-progress": inProgress,
+        overdue,
+      });
     } catch (err) {
       console.error("Error fetching errands:", err);
       setError("Failed to load errands. Please try again later.");
@@ -62,39 +68,50 @@ const fetchErrands = async () => {
     setCurrentPage(1);
   };
 
-  const currentErrands = errands[activeTab];
+  // ✅ Prevent crash if undefined
+  const currentErrands = errands[activeTab] || [];
   const totalPages = Math.ceil(currentErrands.length / itemsPerPage);
+
   const paginatedErrands = currentErrands.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
   const changePage = (newPage) => {
-    if (newPage > 0 && newPage <= totalPages) setCurrentPage(newPage);
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
   };
 
   return (
     <div className="bg-white p-8 rounded-md shadow-lg max-w-6xl mx-auto">
-      <h1 className="font-extrabold text-2xl text-Elegant-Gold">Track Your Errands</h1>
+      <h1 className="font-extrabold text-2xl text-Elegant-Gold">
+        Track Your Errands
+      </h1>
+
       <p className="text-lg text-gray-600 mt-3">
-        Stay organized and on top of your responsibilities with a detailed overview of your pending and completed errands.
+        Stay organized and on top of your responsibilities with a detailed
+        overview of your errands.
       </p>
 
+      {/* Tabs */}
       <div className="flex space-x-4 mt-6 border-b">
-        <button
-          className={`py-2 px-4 font-semibold ${activeTab === "pending" ? "text-Elegant-Gold border-b-2 border-Brown" : "text-Brown"}`}
-          onClick={() => handleTabChange("pending")}
-        >
-          Pending Errands
-        </button>
-        <button
-          className={`py-2 px-4 font-semibold ${activeTab === "completed" ? "text-Elegant-Gold border-b-2 border-Brown" : "text-Brown"}`}
-          onClick={() => handleTabChange("completed")}
-        >
-          Completed Errands
-        </button>
+        {["pending", "in-progress", "completed", "overdue"].map((tab) => (
+          <button
+            key={tab}
+            className={`py-2 px-4 font-semibold ${
+              activeTab === tab
+                ? "text-Elegant-Gold border-b-2 border-Brown"
+                : "text-Brown"
+            }`}
+            onClick={() => handleTabChange(tab)}
+          >
+            {tab.replace("-", " ").toUpperCase()}
+          </button>
+        ))}
       </div>
 
+      {/* Content */}
       {loading ? (
         <p className="mt-6 text-gray-700">Loading errands...</p>
       ) : error ? (
@@ -104,46 +121,78 @@ const fetchErrands = async () => {
           <div className="overflow-x-auto mt-6">
             {paginatedErrands.length > 0 ? (
               <table className="min-w-full bg-gray-100 border border-gray-300 rounded-md shadow-md">
-                <thead>
-                  <tr className="bg-Elegant-Gold">
-                    <th className="py-3 px-6 text-left text-Brown">Service</th>
-                    <th className="py-3 px-6 text-left text-Brown">Errand</th>
-                    <th className="py-3 px-6 text-left text-Brown">Location</th>
-                    <th className="py-3 px-6 text-left text-Brown">Voucher</th>
-                                        <th className="py-3 px-6 text-left text-Brown">Amount</th>
-                                                            <th className="py-3 px-6 text-left text-Brown">Due Date</th>
-                    <th className="py-3 px-6 text-left text-Brown">Status</th>
+                <thead> 
+                  <tr className="bg-Elegant-Gold m-auto">
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Service
+                    </th>
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Description
+                    </th>
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Location
+                    </th>
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Voucher
+                    </th>
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Amount
+                    </th>
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Due Date
+                    </th>
+                    {/* <th className="py-3 px-6 text-left text-Brown">
+                      Status
+                    </th> */}
                   </tr>
                 </thead>
-              <tbody>
-        {paginatedErrands.map((errand) => (
-          <tr key={errand._id} className="border-b hover:bg-gray-200">
-            <td className="py-3 px-6">{errand.service}</td>
-            <td className="py-3 px-6">{errand.errandDescription}</td>
-            <td className="py-3 px-6">{errand.location}</td>
-           <td className="py-3 px-6">
-  {errand.voucher ? errand.voucher.category : "N/A"}
-</td>
-<td className="py-3 px-6">
-  ₦{Number(errand.estimatedCost).toLocaleString()}
-</td>
-<td className="py-3 px-6">
-  {errand.dueDate
-    ? new Date(errand.dueDate).toLocaleDateString()
-    : "N/A"}
-</td>
 
-
-            <td className="py-3 px-6">{errand.status}</td>
-          </tr>
-        ))}
-      </tbody>
+                <tbody>
+                  {paginatedErrands.map((errand) => (
+                    <tr
+                      key={errand._id}
+                      className="border-b hover:bg-gray-200"
+                    >
+                      <td className="py-3 px-6">
+                        {errand.service || "N/A"}
+                      </td>
+                      <td className="py-3 px-6">
+                        {errand.errandDescription || "N/A"}
+                      </td>
+                      <td className="py-3 px-6">
+                        {errand.location || "N/A"}
+                      </td>
+                      <td className="py-3 px-6">
+                        {errand.voucher?.category || "N/A"}
+                      </td>
+                      <td className="py-3 px-6">
+                        ₦
+                        {errand.estimatedCost
+                          ? Number(errand.estimatedCost).toLocaleString()
+                          : "0"}
+                      </td>
+                      <td className="py-3 px-6">
+                        {errand.dueDate
+                          ? new Date(
+                              errand.dueDate
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                      {/* <td className="py-3 px-6 capitalize">
+                        {errand.status}
+                      </td> */}
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             ) : (
-              <p className="text-red-500 mt-4">No errands available in this tab.</p>
+              <p className="text-gray-500 mt-4">
+                No errands available in this tab.
+              </p>
             )}
           </div>
 
+          {/* Pagination */}
           {paginatedErrands.length > 0 && (
             <div className="flex justify-center items-center mt-6 space-x-2">
               <button
@@ -153,9 +202,11 @@ const fetchErrands = async () => {
               >
                 Prev
               </button>
+
               <span className="text-gray-700">
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {totalPages || 1}
               </span>
+
               <button
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
