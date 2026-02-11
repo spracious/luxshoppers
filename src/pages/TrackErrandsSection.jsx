@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { BASEURL } from "../constant";
 
 const TrackErrandsSection = () => {
   const navigate = useNavigate();
@@ -11,29 +12,38 @@ const TrackErrandsSection = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchErrands = async () => {
-    try {
-      setLoading(true);
-      setError("");
+ 
+const fetchErrands = async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      // ✅ Get user from localStorage
-      const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    // 1️⃣ DEFINE IT FIRST (This line must come before you use currentUser)
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-      if (!currentUser?._id) {
-        setError("User not logged in. Please log in again.");
-        setLoading(false);
-        return;
-      }
+    // 2️⃣ THEN YOU CAN LOG IT OR CHECK IT
+    console.log("Current User:", currentUser);
 
-      // ✅ Use MongoDB ObjectId for API
-      const response = await axios.get(
-        `https://errandgirlie-backend.onrender.com/api/v1/errands/${currentUser._id}`
-      );
+    // 3️⃣ THEN CHECK IF IT EXISTS
+    if (!currentUser || !currentUser._id) {
+      setError("User not logged in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+
+
+    // 4️⃣ FINALLY USE IT IN THE API CALL
+    const response = await axios.get(
+      `${BASEURL}/errands/${currentUser._id}`
+    );
 
       if (response.data.errands) {
         const pending = response.data.errands.filter((e) => e.status === "pending");
         const completed = response.data.errands.filter((e) => e.status === "completed");
-        setErrands({ pending, completed });
+                const inProgress = response.data.errands.filter((e) => e.status === "in-progress");
+        const overdue = response.data.errands.filter((e) => e.status === "overdue");
+
+        setErrands({ pending, completed, inProgress, overdue });
       }
     } catch (err) {
       console.error("Error fetching errands:", err);
@@ -101,6 +111,7 @@ const TrackErrandsSection = () => {
                     <th className="py-3 px-6 text-left text-Brown">Location</th>
                     <th className="py-3 px-6 text-left text-Brown">Voucher</th>
                                         <th className="py-3 px-6 text-left text-Brown">Amount</th>
+                                                            <th className="py-3 px-6 text-left text-Brown">Due Date</th>
                     <th className="py-3 px-6 text-left text-Brown">Status</th>
                   </tr>
                 </thead>
@@ -115,6 +126,11 @@ const TrackErrandsSection = () => {
 </td>
 <td className="py-3 px-6">
   ₦{Number(errand.estimatedCost).toLocaleString()}
+</td>
+<td className="py-3 px-6">
+  {errand.dueDate
+    ? new Date(errand.dueDate).toLocaleDateString()
+    : "N/A"}
 </td>
 
 

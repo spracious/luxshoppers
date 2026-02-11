@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import TrackErrandsSection from './pages/TrackErrandsSection';
+import { BASEURL } from "./constant";
 
 function App() {
 
@@ -21,7 +22,7 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      axios.get("https://errandgirlie-backend.onrender.com/api/v1/auth/me", {
+      axios.get(`${BASEURL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => {

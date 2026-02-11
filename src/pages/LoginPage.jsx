@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { BASEURL } from "../constant";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const LoginPage = () => {
 
     if (Object.keys(validationErrors).length === 0) {
       try {
-        const response = await fetch("https://errandgirlie-backend.onrender.com/api/v1/auth/login", {
+        const response = await fetch(`${BASEURL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: formData.email, password: formData.password }),

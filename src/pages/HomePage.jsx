@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import services from "../../db.json"; 
+import { BASEURL } from "../constant";
 
 const DELIVERY_CHARGES = {
   Abuja: 3000,
@@ -29,11 +30,13 @@ const HomePage = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
    const [vouchers, setVouchers] = useState([]);
+   const [dueDate, setDueDate] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [step, setStep] = useState(1);
   const [totalCost, setTotalCost] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false); 
+  const { language } = JSON.parse(localStorage.getItem("currentUser"));
     const [customerDetails, setCustomerDetails] = useState({
     address: "",
     email:customer.email,
@@ -55,7 +58,7 @@ const calculateTotal = () => {
 
 useEffect(() => {
   calculateTotal();
-}, [selectedVoucher, customAmount]);
+}, [selectedVoucher, customAmount, customerDetails.location]);
 
   
   // 🔹 Fetch vouchers from backend
@@ -142,7 +145,7 @@ const handlePayWithPaystack = (
 
 
   const handler = window.PaystackPop.setup({
-    key: paystackPublicKey,
+    key: "pk_test_d3e946b0ab3d7143559ced6c9487414648df75a5",
     email,
     amount: Math.round(amount * 100),
     currency: "NGN",
@@ -165,64 +168,61 @@ const handlePayWithPaystack = (
   /* ---------------- SAVE TO BACKEND ---------------- */
 const saveOrderToBackend = async (paymentReference) => {
   try {
-    // ✅ Get current user from localStorage
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (!currentUser || !currentUser._id) throw new Error("User not logged in!");
+    const storedUser = localStorage.getItem("currentUser");
+    if (!storedUser) throw new Error("User not logged in");
 
-    // 1️⃣ Create errand payload
+    const currentUser = JSON.parse(storedUser);
+
     const errandPayload = {
-      user: currentUser._id, // Use currentUser instead of undefined "user"
+      user: currentUser._id,
       service: selectedService?.name || "Custom Service",
-      voucher: selectedVoucher?._id || null,
       errandDescription: customerDetails.description || "N/A",
       location: customerDetails.location,
       phone: customerDetails.phoneNumber,
       address: customerDetails.address,
-      estimatedCost: totalCost,
-      paymentReference, // Pass Paystack reference here
+      estimatedCost: Number(totalCost),
+      dueDate: dueDate,
+      paymentReference,
     };
 
-    // 2️⃣ Save errand to backend
+    if (selectedVoucher?._id) {
+      errandPayload.voucher = selectedVoucher._id;
+    }
+
     const errandResponse = await axios.post(
-      "https://errandgirlie-backend.onrender.com/api/v1/errands/send",
+      `${BASEURL}/errands/send`,
       errandPayload
     );
 
     const errandId = errandResponse.data.errand._id;
 
-    // 3️⃣ Create payment payload
-  
-  const paymentPayload = {
-  user: currentUser._id,  // ObjectId string, not object
-  errand: errandId,        // ObjectId string
-  service: { name: selectedService?.name || "Custom Service" },
-  voucher: selectedVoucher?._id || null, // only the voucher ID
-  amount: Number(totalCost) || 0,
-  status: "success",
-  transactionId: paymentReference,
-  paymentMethod: "Paystack",
-};
+    const paymentPayload = {
+      user: currentUser._id,
+      errand: errandId,
+      service: { name: selectedService?.name || "Custom Service" },
+      amount: Number(totalCost),
+      status: "pending",
+      transactionId: paymentReference,
+      paymentMethod: "Paystack",
+    };
 
+    if (selectedVoucher?._id) {
+      paymentPayload.voucher = selectedVoucher._id;
+    }
 
-    console.log("Payment Payload to Backend:", paymentPayload);
-
-
-    // 4️⃣ Save payment to backend
     await axios.post(
-      "https://errandgirlie-backend.onrender.com/api/v1/payments/generate",
+      `${BASEURL}/payments/generate`,
       paymentPayload
     );
 
-    // 5️⃣ Update UI
     alert("Payment successful & order received!");
     setIsModalOpen(false);
     setStep(1);
     navigate("/errands");
+
   } catch (err) {
     console.error("Error saving order:", err);
-    alert(
-      "Payment successful but saving order failed. Please contact support."
-    );
+    alert("Payment successful but saving order failed. Please contact support.");
   }
 };
 
@@ -451,6 +451,19 @@ const handleConfirmPayment = () => {
       className="w-full p-2 border border-gray-300 rounded-lg"
       placeholder="Enter errand details on your scale of preferrence"
     />
+  </div>
+   <div>
+    <label htmlFor="date" className="block text-gray-700 font-bold">
+      Expected Delievry Date
+    </label>
+   <input
+  id="date"
+  name="dueDate"
+  type="date"
+  value={dueDate}
+  onChange={(e) => setDueDate(e.target.value)}
+  required
+/>
   </div>
 </form>
 
