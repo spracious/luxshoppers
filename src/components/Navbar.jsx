@@ -7,6 +7,14 @@ const Navbar = () => {
   const [user, setUser] = useState(
     () => JSON.parse(localStorage.getItem("currentUser")) || null
   );
+  const dashboardRoute =
+  user?.role === "admin"
+    ? "/AdminDashboard"
+    : user?.role === "agent"
+    ? "/agent-dashboard"
+    : "/dashboard";
+
+  
   const navigate = useNavigate();
 
   // Check authenticated user
@@ -19,7 +27,7 @@ const Navbar = () => {
       }
 
       const response = await fetch(
-        `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser.id}`,
+        `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser._id}`,
         { credentials: "include" }
       );
 
@@ -84,7 +92,7 @@ const Navbar = () => {
         <div className="hidden md:flex mt-8 space-x-4 items-center">
           {user && (
             <Link
-              to="/dashboard"
+              to={dashboardRoute}
             className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
             >
               Dashboard
@@ -156,7 +164,7 @@ const Navbar = () => {
    <div className="mt-10">
          {user && (
           <Link
-            to="/dashboard"
+            to={dashboardRoute}
           className="block text-Brown hover:text-Elegant-Gold transition duration-300"
             onClick={() => setMenuOpen(false)}
           >

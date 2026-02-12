@@ -57,12 +57,25 @@ const LoginPage = () => {
         // ✅ Store user + token in localStorage
         localStorage.setItem("token", data.token);
         localStorage.setItem("currentUser", JSON.stringify(data.user));
-        localStorage.setItem("user", JSON.stringify(data.user));
+        // localStorage.setItem("user", JSON.stringify(data.user));
         // Trigger Navbar updates
         window.dispatchEvent(new Event("storage"));
 
         // Redirect to dashboard
-        navigate("/dashboard");
+
+       const userRole = data.user?.role;
+
+if (userRole === "user") {
+  navigate("/dashboard");
+} else if (userRole === "agent") {
+  navigate("/agent-dashboard");
+} else if (userRole === "admin") {
+  navigate("/AdminDashboard");
+} else {
+  navigate("/");
+}
+
+
       } catch (err) {
         console.error(err);
         setErrors({ general: "Server error. Try again later." });
