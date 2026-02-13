@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BASEURL } from "../constant";
-
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,29 +25,29 @@ ChartJS.register(
 );
 
 
-
 const AdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-
   const [activeSection, setActiveSection] = useState("Overview");
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [activeMessageTab, setActiveMessageTab] = useState("Unattended");
   const [agents, setAgents] = useState([]);
-   const [monthlyRevenue, setMonthlyRevenue] = useState([]);
+  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const storedUser = JSON.parse(localStorage.getItem("currentUser"));
   const userName = storedUser?.name || "Admin";
-
-  // ✅ CORRECTION 1: Initialize stats with default structure so UI isn't empty on load
- const [stats, setStats] = useState([]);
-
+  const [stats, setStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [notification, setNotification] = useState([]);
-
-  // ✅ CORRECTION 2: Update fetch logic to map backend data to your specific labels
+  const [errors, setErrors] = useState({});
+  const [users, setUsers] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
   const fetchDashboard = async (currentPage = 1) => {
   setIsLoading(true);
   try {
@@ -74,19 +73,6 @@ const AdminDashboard = () => {
     fetchDashboard(page);
   }, [page]);
 
-    // Chart data for monthly revenue
-  // const chartData = {
-  //   labels: monthlyRevenue.map((m) => m.month),
-  //   datasets: [
-  //     {
-  //       label: "Revenue (₦)",
-  //       data: monthlyRevenue.map((m) => m.revenue),
-  //       backgroundColor: "#F59E0B", // Orange
-  //     },
-  //   ],
-  // };
-
-  // Register everything
 
 // Chart Data (from backend)
 const chartData = {
@@ -136,25 +122,187 @@ const chartOptions = {
 };
 
 
-
-
   const handleSectionChange = (section) => {
     setActiveSection(section);
     setSelectedNotification(null);
   };
 
-    const [formData, setFormData] = useState({
-      username: "",
-      fullName: "",
-      phoneNumber: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      address: "",
-      vehicleType: "",
-      emergencyContactName: "",
-      emergencyContactPhone: "",
-    });
+     const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    role: "agent", 
+    terms: false,
+  }); 
+
+
+    const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const validate = () => {
+    const validationErrors = {};
+    if (!formData.name) validationErrors.name = "Full name is required";
+    if (!formData.email) validationErrors.email = "Email is required";
+    if (!/\S+@\S+\.\S+/.test(formData.email))
+      validationErrors.email = "Please enter a valid email address";
+    if (!formData.phone)
+    validationErrors.phone = "Phone number is required";
+  else if (!/^\d{11}$/.test(formData.phone))
+    validationErrors.phone = "Phone number must be exactly 11 digits";
+    if (!formData.password) validationErrors.password = "Password is required";
+    if (formData.password !== formData.confirmPassword)
+      validationErrors.confirmPassword = "Passwords do not match";
+    // if (!formData.terms)
+    //   validationErrors.terms = "You must agree to the terms and conditions";
+
+    return validationErrors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrors({});
+
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("https://errandgirlie-backend.onrender.com/api/v1/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+          // credentials: "include" // ✅ important if backend uses cookies or sessions
+      });
+
+      const data = await response.json();
+      console.log("API Response:", data); // Debugging
+
+      if (!response.ok) throw new Error(data.message || "Signup failed");
+
+      // Store user data in localStorage
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+      };
+
+      localStorage.setItem("user", JSON.stringify(userData));
+      console.log("User stored in localStorage:", userData);
+
+      setSuccessMessage("Signup successful! Redirecting...");
+      setTimeout(() => navigate("/home"), 2000); // Redirect after 2 seconds
+    } catch (error) {
+      console.error("Signup Error:", error.message);
+      setErrors({ apiError: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const agentsPerPage = 10; // change this to 10 if you want more per page
+  const usersPerPage = 10; // change this to 10 if you want more per page
+
+
+  // Fetch agents from backend
+  const fetchAgents = async () => {
+    try {
+      setIsLoading(true);
+      setErrors({}); // clear previous errors
+
+      const res = await fetch(`${BASEURL}/users/users?role=agent`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch agents");
+
+      setAgents(data.users || []);
+    } catch (err) {
+      setErrors({ fetch: err.message });
+      console.error("Fetch agents error:", err);
+
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+    // Fetch users from backend
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      setErrors({}); // clear previous errors
+
+      const res = await fetch(`${BASEURL}/users/users?role=user`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch users");
+
+      setUsers(data.users || []);
+    } catch (err) {
+      setErrors({ fetch: err.message });
+      console.error("Fetch users error:", err);
+
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgents();
+    fetchUsers();
+  }, []);
+
+    // Agent Pagination Logic
+  const indexOfLastAgent = currentPage * agentsPerPage;
+  const indexOfFirstAgent = indexOfLastAgent - agentsPerPage;
+  const currentAgents = agents.slice(indexOfFirstAgent, indexOfLastAgent);
+  const totalAgentPages = Math.ceil(agents.length / agentsPerPage);
+
+    // Handlers
+  const handleAgentEdit = (agent) => {
+    console.log("Edit", agent);
+    // implement edit logic
+  };
+
+  const handleAgentDelete = (agentId) => {
+    console.log("Delete", agentId);
+    // implement delete logic
+  };
+
+    if (isLoading) return <p>Loading agents...</p>;
+  if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
+
+      // User Pagination Logic
+  const indexOfLastUser = userCurrentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+  const totalUserPages = Math.ceil(users.length / usersPerPage);
+
+  // Handlers
+  const handleUserEdit = (user) => {
+    console.log("Edit", user);
+    // implement edit logic
+  };
+
+  const handleUserDelete = (userId) => {
+    console.log("Delete", userId);
+    // implement delete logic
+  };
+
+  if (isLoading) return <p>Loading users...</p>;
+  if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
+
   
     // Function to generate a strong random password
     const generatePassword = () => {
@@ -166,34 +314,34 @@ const chartOptions = {
     };
   
     // Handle input changes & auto-generate username and password
-    const handleChange = (event) => {
-      const { name, value } = event.target;
+    // const handleChange = (event) => {
+    //   const { name, value } = event.target;
   
-      setFormData((prevData) => {
-        let updatedData = { ...prevData, [name]: value };
+    //   setFormData((prevData) => {
+    //     let updatedData = { ...prevData, [name]: value };
   
-        // Auto-generate username and password when full name is entered
-        if (name === "fullName") {
-          const randomNum = Math.floor(Math.random() * 900) + 100;
-          updatedData.username = `Agent${randomNum}`;
-          updatedData.password = generatePassword(); // Generate password
-          updatedData.confirmPassword = updatedData.password; // Autofill confirm password
-        }
+    //     // Auto-generate username and password when full name is entered
+    //     if (name === "fullName") {
+    //       const randomNum = Math.floor(Math.random() * 900) + 100;
+    //       updatedData.username = `Agent${randomNum}`;
+    //       updatedData.password = generatePassword(); // Generate password
+    //       updatedData.confirmPassword = updatedData.password; // Autofill confirm password
+    //     }
   
-        return updatedData;
-      });
-    };
+    //     return updatedData;
+    //   });
+    // };
   
     // Handle form submission
-    const handleSubmit = (event) => {
-      event.preventDefault();
-      console.log("Form submitted:", formData);
-    };
+    // const handleSubmit = (event) => {
+    //   event.preventDefault();
+    //   console.log("Form submitted:", formData);
+    // };
 
-    const handleDelete = (index) => {
-  const updatedAgents = agents.filter((_, i) => i !== index);
-  setAgents(updatedAgents);
-};
+//     const handleDelete = (index) => {
+//   const updatedAgents = agents.filter((_, i) => i !== index);
+//   setAgents(updatedAgents);
+// };
 
 
 
@@ -204,22 +352,6 @@ const chartOptions = {
     { name: "Deliveries", completed: 10, ongoing: 2, pending: 1 },
     { name: "Errands", completed: 20, ongoing: 3, pending: 0 },
   ];
-
-  // const stats = [
-  //   { label: "Total Services Completed", value: 45 },
-  //   { label: "Active Errands", value: 10 },
-  //   { label: "Pending Approvals", value: 3 },
-  //   { label: "Registered Users", value: 33 },
-  //   { label: "Registered Agents", value: 15 },
-  //   { label: "New Messages", value: 3 },
-  //   { label: "Revenue This Month", value: "₦2,300" },
-  // ];
-
-  // const recentActivities = [
-  //   { description: "Errand #123 completed", timestamp: "5 mins ago" },
-  //   { description: "New user registered", timestamp: "15 mins ago" },
-  //   { description: "Payment received for Order #456", timestamp: "1 hour ago" },
-  // ];
 
   const notifications = [
     { id: 1, title: "Message 1", timestamp: "10 mins ago", details: "Details for Message 1", status: "unattended" },
@@ -241,7 +373,7 @@ const chartOptions = {
           <p className="text-sm text-Soft-beige mt-1">Welcome back!</p>
         </div>
         <nav className="flex-grow p-4">
-          {["Overview", "Create Agent", "Agents", "Services", "Errands", "Reports", "Settings"].map(
+          {["Overview", "Create Agent", "Agents", "Users", "Services", "Errands", "Reports", "Settings"].map(
             (section) => (
               <button
                 key={section}
@@ -385,258 +517,289 @@ const chartOptions = {
         )}
 
 {activeSection === "Create Agent" && formData && (
-  <section className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-  <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+  <section className="max-w-2xl mx-auto bg-Ivory p-8 rounded-lg shadow-lg">
+  <h2 className="text-3xl font-bold text-Brown mb-6 text-center">
     Agent Registration
   </h2>
-  <form onSubmit={handleSubmit}>
-    {/* Username (Auto-generated) */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Username</label>
-      <input
-        type="text"
-        name="username"
-        value={formData.username}
-        readOnly
-        className="w-full p-3 border border-gray-300 rounded bg-gray-100"
-      />
-    </div>
+     {errors.apiError && <p className="text-red-500 text-sm text-center">{errors.apiError}</p>}
+        {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
 
-    {/* Full Name */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Full Name</label>
-      <input
-        type="text"
-        name="fullName"
-        value={formData.fullName}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className="block w-full px-3 py-2 border rounded-md"
+              placeholder="Full Name"
+            />
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          </div>
 
-    {/* Phone Number */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-      <input
-        type="tel"
-        name="phoneNumber"
-        value={formData.phoneNumber}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
+          <div>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="block w-full px-3 py-2 border rounded-md"
+              placeholder="Email Address"
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
 
-    {/* Email */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Email</label>
-      <input
-        type="email"
-        name="email"
-        value={formData.email}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
+          <div>
+            <input
+              id="phone"
+              name="phone"
+              type="text"
+              value={formData.phone}
+              onChange={handleChange}
+              required
+              className="block w-full px-3 py-2 border rounded-md"
+              placeholder="Phone Number"
+            />
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
 
-    {/* Password (Auto-generated) */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Password</label>
-      <input
-        type="text"
-        name="password"
-        value={formData.password}
-        readOnly
-        className="w-full p-3 border border-gray-300 rounded bg-gray-100"
-      />
-    </div>
+          </div>
 
-    {/* Confirm Password (Auto-filled) */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-      <input
-        type="text"
-        name="confirmPassword"
-        value={formData.confirmPassword}
-        readOnly
-        className="w-full p-3 border border-gray-300 rounded bg-gray-100"
-      />
-    </div>
+          <div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              className="block w-full px-3 py-2 border rounded-md"
+              placeholder="Password"
+            />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          </div>
 
-    {/* Residential Address */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Residential Address</label>
-      <input
-        type="text"
-        name="address"
-        value={formData.address}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
+          <div>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              className="block w-full px-3 py-2 border rounded-md"
+              placeholder="Confirm Password"
+            />
+            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+          </div>
 
-    {/* Vehicle Type */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Vehicle Type</label>
-      <select
-        name="vehicleType"
-        value={formData.vehicleType}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      >
-        <option value="">Select vehicle type</option>
-        <option value="Bike">Bike</option>
-        <option value="Car">Car</option>
-        {/* <option value="Other">Other</option> */}
-      </select>
-    </div>
+          <input type="hidden" value={formData.role} name="role" />
 
-    {/* Emergency Contact Name */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Emergency Contact Name</label>
-      <input
-        type="text"
-        name="emergencyContactName"
-        value={formData.emergencyContactName}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
+          {/* <div className="flex items-center">
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              checked={formData.terms}
+              onChange={handleChange}
+              className="h-4 w-4 text-blue-600"
+              required
+            />
+            <label htmlFor="terms" className="ml-2 text-sm text-Brown font-bold">
+              I agree to the terms and conditions
+            </label>
+          </div> */}
+          {errors.terms && <p className="text-red-500 text-sm mt-1">{errors.terms}</p>}
 
-    {/* Emergency Contact Phone */}
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Emergency Contact Phone</label>
-      <input
-        type="tel"
-        name="emergencyContactPhone"
-        value={formData.emergencyContactPhone}
-        onChange={handleChange}
-        className="w-full p-3 border border-gray-300 rounded"
-        required
-      />
-    </div>
-
-    {/* Submit Button */}
-    <button type="submit" className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition duration-300 mt-4">
-      Submit
-    </button>
-  </form>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-Brown text-white px-6 py-3 rounded-md font-semibold shadow-md hover:bg-Brown"
+          >
+            {isSubmitting ? "Creating..." : "Create Agent"}
+          </button>
+        </form>
 </section>
 )}
 
 {activeSection === "Agents" && (
-        //   <section className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-        //   <h2 className="text-3xl font-bold text-orangee mb-6 text-center">
-        //     Registered Agents
-        //   </h2>
-      
-        //   {!agents || agents.length === 0 ? (
-        //     <p className="text-center text-gray-600">No agents registered yet.</p>
-        //   ) : (
-        //     <div className="overflow-x-auto">
-        //       <table className="min-w-full bg-white border border-gray-300 rounded-lg">
-        //         <thead>
-        //           <tr className="bg-gray-200 text-gray-700">
-        //             <th className="py-2 px-4 border">Username</th>
-        //             <th className="py-2 px-4 border">Full Name</th>
-        //             <th className="py-2 px-4 border">Phone</th>
-        //             <th className="py-2 px-4 border">Email</th>
-        //             <th className="py-2 px-4 border">Vehicle</th>
-        //             <th className="py-2 px-4 border">Action</th>
-        //           </tr>
-        //         </thead>
-        //         <tbody>
-        //           {agents.map((agent, index) => (
-        //             <tr key={index} className="border text-center">
-        //               <td className="py-2 px-4">{agent.username}</td>
-        //               <td className="py-2 px-4">{agent.fullName}</td>
-        //               <td className="py-2 px-4">{agent.phoneNumber}</td>
-        //               <td className="py-2 px-4">{agent.email}</td>
-        //               <td className="py-2 px-4">{agent.vehicleType}</td>
-        //               <td className="py-2 px-4">
-        //                 <button
-        //                   onClick={() => handleDelete(index)}
-        //                   className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
-        //                 >
-        //                   Delete
-        //                 </button>
-        //               </td>
-        //             </tr>
-        //           ))}
-        //         </tbody>
-        //       </table>
-        //     </div>
-        //   )}
-        // </section>
 
-      <section className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg">
-  <h2 className="text-lg md:text-3xl font-bold text-gray-800 mb-4 md:mb-6 text-center">
-    Registered Agents
-  </h2>
+   <section className="max-w-8xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-4 md:p-6">
+      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+        Registered Agents
+      </h2>
 
-  <div className="overflow-hidden">
-    <table className="w-60 bg-white border border-gray-300 rounded-lg">
-      <thead>
-        <tr className="bg-gray-200 text-gray-700 text-sm md:text-base">
-          <th className="py-2 px-3 md:px-4 border">Username</th>
-          <th className="py-2 px-3 md:px-4 border">Full Name</th>
-          <th className="py-2 px-3 md:px-4 border whitespace-nowrap">Phone</th>
-          <th className="py-2 px-3 md:px-4 border">Email</th>
-          <th className="py-2 px-3 md:px-4 border">Vehicle</th>
-          <th className="py-2 px-3 md:px-4 border">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {[
-          {
-            username: "Agent001",
-            fullName: "John Doe",
-            phoneNumber: "+2348123456789",
-            email: "john@example.com",
-            vehicleType: "Bike",
-          },
-          {
-            username: "Agent002",
-            fullName: "Jane Smith",
-            phoneNumber: "+2348034567890",
-            email: "jane@example.com",
-            vehicleType: "Car",
-          },
-          {
-            username: "Agent003",
-            fullName: "Michael Johnson",
-            phoneNumber: "+2349075678901",
-            email: "michael@example.com",
-            vehicleType: "Other",
-          },
-        ].map((agent, index) => (
-          <tr key={index} className="border text-center text-sm">
-            <td className="py-2 px-3 md:px-4">{agent.username}</td>
-            <td className="py-2 px-3 md:px-4">{agent.fullName}</td>
-            <td className="py-2 px-3 md:px-4">{agent.phoneNumber}</td>
-            <td className="py-2 px-3 md:px-4">{agent.email}</td>
-            <td className="py-2 px-3 md:px-4">{agent.vehicleType}</td>
-            <td className="py-2 px-3 md:px-4">
-              <div className="flex justify-center space-x-2">
-                <button className="bg-gray-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 transition text-xs md:text-sm">
-                  Edit
-                </button>
-                <button className="bg-red-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-red-600 transition text-xs md:text-sm">
-                  Delete
-                </button>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</section>
+      {isLoading ? (
+        <p className="text-center">Loading agents...</p>
+      ) : errors.fetch ? (
+        <p className="text-center text-red-500">{errors.fetch}</p>
+      ) : (
+        <>
+          <div className="overflow-hidden">
+            <table className="w-full bg-gray-100 border border-gray-300 rounded-lg">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm md:text-base">
+                  <th className="py-2 px-3 md:px-4 border">Name</th>
+                  <th className="py-2 px-3 md:px-4 border">Email</th>
+                  <th className="py-2 px-3 md:px-4 border">Phone</th>
+                  <th className="py-2 px-3 md:px-4 border">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentAgents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-4">
+                      No agents found.
+                    </td>
+                  </tr>
+                ) : (
+                  currentAgents.map((agent) => (
+                    <tr key={agent._id} className="border text-center text-sm">
+                      <td className="py-2 px-3 md:px-4">{agent.name}</td>
+                      <td className="py-2 px-3 md:px-4">{agent.email}</td>
+                      <td className="py-2 px-3 md:px-4">{agent.phone}</td>
+                      <td className="py-2 px-4">
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={() => handleAgentEdit(agent)}
+                            className="bg-gray-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 transition text-xs md:text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleAgentDelete(agent._id)}
+                            className="bg-red-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-red-600 transition text-xs md:text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalAgentPages > 1 && (
+            <div className="flex justify-center items-center mt-4 space-x-4">
+              <button
+                onClick={() => setCurrentPage((prev) => prev - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+
+              <span className="text-sm font-medium">
+                Page {currentPage} of {totalAgentPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage((prev) => prev + 1)}
+                disabled={currentPage === totalAgentPages}
+                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+        
+        )}
+
+{activeSection === "Users" && (
+
+   <section className="max-w-8xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-4 md:p-6">
+      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+        Registered Users
+      </h2>
+
+      {isLoading ? (
+        <p className="text-center">Loading users...</p>
+      ) : errors.fetch ? (
+        <p className="text-center text-red-500">{errors.fetch}</p>
+      ) : (
+        <>
+          <div className="overflow-hidden">
+            <table className="w-full bg-gray-100 border border-gray-300 rounded-lg">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm md:text-base">
+                  <th className="py-2 px-3 md:px-4 border">Name</th>
+                  <th className="py-2 px-3 md:px-4 border">Email</th>
+                  <th className="py-2 px-3 md:px-4 border">Phone</th>
+                  <th className="py-2 px-3 md:px-4 border">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-4">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  currentUsers.map((user) => (
+                    <tr key={user._id} className="border text-center text-sm">
+                      <td className="py-2 px-3 md:px-4">{user.name}</td>
+                      <td className="py-2 px-3 md:px-4">{user.email}</td>
+                      <td className="py-2 px-3 md:px-4">{user.phone}</td>
+                      <td className="py-2 px-4">
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={() => handleUserEdit(user)}
+                            className="bg-gray-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 transition text-xs md:text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleUserDelete(user._id)}
+                            className="bg-red-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-red-600 transition text-xs md:text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalUserPages > 1 && (
+            <div className="flex justify-center items-center mt-4 space-x-4">
+              <button
+                onClick={() => setUserCurrentPage((prev) => prev - 1)}
+                disabled={userCurrentPage === 1}
+                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+
+              <span className="text-sm font-medium">
+                Page {userCurrentPage} of {totalUserPages}
+              </span>
+
+              <button
+                onClick={() => setUserCurrentPage((prev) => prev + 1)}
+                disabled={userCurrentPage === totalUserPages}
+                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
         
         )}
 
