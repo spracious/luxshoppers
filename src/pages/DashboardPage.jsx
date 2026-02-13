@@ -10,7 +10,7 @@ const DashboardPage = () => {
   const navigate = useNavigate();
 
   // Retrieve the user from localStorage
-  const storedUser = localStorage.getItem("user");
+  const storedUser = localStorage.getItem("currentUser");
   const userName = storedUser ? JSON.parse(storedUser).name : "Valued Customer";
 
   const canPlaceOrder = isWithinOperationalHours();
@@ -27,7 +27,7 @@ const DashboardPage = () => {
           <p>
             <strong>Important:</strong> For a top-notch, first-class service,
             LuxShoppers accepts orders only between{" "}
-            <span className="font-bold">10 AM and 3 PM</span>. You can browse
+            <span className="font-bold">8:00 AM and 3:00 PM</span>. You can browse
             services and plan your orders for operational hours.
           </p>
         </div>
@@ -61,5 +61,19 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

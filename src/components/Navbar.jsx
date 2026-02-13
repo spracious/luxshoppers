@@ -4,18 +4,23 @@ import logo from "../images/luxshopper logo.png";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState(
-    () => JSON.parse(localStorage.getItem("currentUser")) || null
-  );
-  const dashboardRoute =
-  user?.role === "admin"
-    ? "/AdminDashboard"
-    : user?.role === "agent"
-    ? "/agent-dashboard"
-    : "/dashboard";
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("currentUser")) || null;
+    } catch {
+      return null;
+    }
+  });
 
-  
   const navigate = useNavigate();
+
+  // Determine dashboard route
+  const dashboardRoute =
+    user?.role === "admin"
+      ? "/AdminDashboard"
+      : user?.role === "agent"
+      ? "/agent-dashboard"
+      : "/dashboard";
 
   // Check authenticated user
   const checkAuth = async () => {
@@ -26,8 +31,15 @@ const Navbar = () => {
         return;
       }
 
+      // Support id or _id from backend
+      const userId = storedUser.id || storedUser._id;
+      if (!userId) {
+        setUser(null);
+        return;
+      }
+
       const response = await fetch(
-        `https://errandgirlie-backend.onrender.com/api/v1/users/${storedUser._id}`,
+        `https://errandgirlie-backend.onrender.com/api/v1/users/${userId}`,
         { credentials: "include" }
       );
 
@@ -49,7 +61,7 @@ const Navbar = () => {
     return () => window.removeEventListener("storage", checkAuth);
   }, []);
 
-  // Handle logout
+  // Logout handler
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     setUser(null);
@@ -66,7 +78,7 @@ const Navbar = () => {
           <img src={logo} alt="LuxShoppers" className="w-32 mt-4" />
         </Link>
 
-        {/* Center Menu */}
+        {/* Desktop Menu */}
         <div className="hidden md:flex mt-8 space-x-10 items-center">
           <Link
             to="/about"
@@ -93,7 +105,7 @@ const Navbar = () => {
           {user && (
             <Link
               to={dashboardRoute}
-            className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
+              className="text-Brown hover:text-Elegant-Gold transition duration-300 font-semibold text-lg"
             >
               Dashboard
             </Link>
@@ -101,14 +113,14 @@ const Navbar = () => {
           {user ? (
             <button
               onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-xl shadow-lg transform hover:bg-red-500 transition duration-300"
+              className="bg-red-600 text-white px-4 py-2 rounded-xl shadow-lg hover:bg-red-500 transition duration-300"
             >
               Logout
             </button>
           ) : (
             <Link
               to="/login"
-            className="bg-Brown text-white py-2 font-bold px-4 rounded-xl shadow-lg transform hover:bg-Elegant-Gold hover:text-Brown transition duration-300"
+              className="bg-Brown text-white py-2 font-bold px-4 rounded-xl shadow-lg hover:bg-Elegant-Gold hover:text-Brown transition duration-300"
             >
               Sign In
             </Link>
@@ -138,7 +150,7 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu */}
-      <div className={`md:hidden ${menuOpen ? "block" : "hidden"} mt-3 space-y-2 justify-between`}>
+      <div className={`md:hidden ${menuOpen ? "block" : "hidden"} mt-3 space-y-2`}>
         <Link
           to="/about"
           className="block text-Brown hover:text-Elegant-Gold transition duration-300"
@@ -161,11 +173,10 @@ const Navbar = () => {
           Contact
         </Link>
 
-   <div className="mt-10">
-         {user && (
+        {user && (
           <Link
             to={dashboardRoute}
-          className="block text-Brown hover:text-Elegant-Gold transition duration-300"
+            className="block text-Brown hover:text-Elegant-Gold transition duration-300 mt-4"
             onClick={() => setMenuOpen(false)}
           >
             Dashboard
@@ -175,21 +186,19 @@ const Navbar = () => {
         {user ? (
           <button
             onClick={handleLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500 transition text-left"
+            className="bg-red-600 text-white px-4 py-2 rounded mt-2 w-full hover:bg-red-500 transition"
           >
             Logout
           </button>
         ) : (
-        <Link
-  to="/login"
-  className=" mt-10 bg-Brown text-white px-4 py-2 rounded hover:bg-Elegant-Gold transition w-full text-left"
-  onClick={() => setMenuOpen(false)}
->
-  Sign In
-</Link>
-
+          <Link
+            to="/login"
+            className="bg-Brown text-white px-4 py-2 rounded mt-2 w-full hover:bg-Elegant-Gold transition"
+            onClick={() => setMenuOpen(false)}
+          >
+            Sign In
+          </Link>
         )}
-   </div>
       </div>
     </nav>
   );

@@ -1,5 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { BASEURL } from "../constant";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
+import { Bar } from "react-chartjs-2";
+
+// Register ChartJS plugins
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartDataLabels
+);
+
+
 
 const AdminDashboard = () => {
   const location = useLocation();
@@ -9,8 +35,106 @@ const AdminDashboard = () => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [activeMessageTab, setActiveMessageTab] = useState("Unattended");
   const [agents, setAgents] = useState([]);
-const storedUser = JSON.parse(localStorage.getItem("currentUser"));
-const userName = storedUser?.name || "Admin";
+   const [monthlyRevenue, setMonthlyRevenue] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+  const userName = storedUser?.name || "Admin";
+
+  // ✅ CORRECTION 1: Initialize stats with default structure so UI isn't empty on load
+ const [stats, setStats] = useState([]);
+
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [notification, setNotification] = useState([]);
+
+  // ✅ CORRECTION 2: Update fetch logic to map backend data to your specific labels
+  const fetchDashboard = async (currentPage = 1) => {
+  setIsLoading(true);
+  try {
+    const res = await fetch(
+      `${BASEURL}/admin/stats?page=${currentPage}&limit=10`
+    );
+    const data = await res.json();
+
+    setStats(data.stats || []);
+    setRecentActivities(data.recentActivities || []);
+    setMonthlyRevenue(data.monthlyRevenue || []);
+    setTotalPages(data.pagination?.totalPages || 1);
+
+  } catch (error) {
+    console.error("Dashboard fetch error:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  useEffect(() => {
+    fetchDashboard(page);
+  }, [page]);
+
+    // Chart data for monthly revenue
+  // const chartData = {
+  //   labels: monthlyRevenue.map((m) => m.month),
+  //   datasets: [
+  //     {
+  //       label: "Revenue (₦)",
+  //       data: monthlyRevenue.map((m) => m.revenue),
+  //       backgroundColor: "#F59E0B", // Orange
+  //     },
+  //   ],
+  // };
+
+  // Register everything
+
+// Chart Data (from backend)
+const chartData = {
+  labels: monthlyRevenue.map((item) => item.month),
+  datasets: [
+    {
+      label: "Monthly Revenue",
+      data: monthlyRevenue.map((item) => item.revenue),
+      backgroundColor: "#F59E0B",
+      borderRadius: 6,
+    },
+  ],
+};
+
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: "top",
+    },
+    tooltip: {
+      callbacks: {
+        label: function (context) {
+          return `₦${context.raw.toLocaleString()}`;
+        },
+      },
+    },
+    datalabels: {
+      color: "#fff",
+      anchor: "center",
+      align: "center",
+      formatter: (value) => `₦${value.toLocaleString()}`,
+      font: {
+        weight: "bold",
+      },
+    },
+  },
+  scales: {
+    y: {
+      ticks: {
+        callback: function (value) {
+          return "₦" + value.toLocaleString();
+        },
+      },
+    },
+  },
+};
+
 
 
 
@@ -81,21 +205,21 @@ const userName = storedUser?.name || "Admin";
     { name: "Errands", completed: 20, ongoing: 3, pending: 0 },
   ];
 
-  const stats = [
-    { label: "Total Services Completed", value: 45 },
-    { label: "Active Errands", value: 10 },
-    { label: "Pending Approvals", value: 3 },
-    { label: "Registered Users", value: 33 },
-    { label: "Registered Agents", value: 15 },
-    { label: "New Messages", value: 3 },
-    { label: "Revenue This Month", value: "₦2,300" },
-  ];
+  // const stats = [
+  //   { label: "Total Services Completed", value: 45 },
+  //   { label: "Active Errands", value: 10 },
+  //   { label: "Pending Approvals", value: 3 },
+  //   { label: "Registered Users", value: 33 },
+  //   { label: "Registered Agents", value: 15 },
+  //   { label: "New Messages", value: 3 },
+  //   { label: "Revenue This Month", value: "₦2,300" },
+  // ];
 
-  const recentActivities = [
-    { description: "Errand #123 completed", timestamp: "5 mins ago" },
-    { description: "New user registered", timestamp: "15 mins ago" },
-    { description: "Payment received for Order #456", timestamp: "1 hour ago" },
-  ];
+  // const recentActivities = [
+  //   { description: "Errand #123 completed", timestamp: "5 mins ago" },
+  //   { description: "New user registered", timestamp: "15 mins ago" },
+  //   { description: "Payment received for Order #456", timestamp: "1 hour ago" },
+  // ];
 
   const notifications = [
     { id: 1, title: "Message 1", timestamp: "10 mins ago", details: "Details for Message 1", status: "unattended" },
@@ -166,40 +290,98 @@ const userName = storedUser?.name || "Admin";
 
         {activeSection === "Overview" && (
           <section>
-            <h3 className="text-lg font-bold text-Brown mb-4">
-              Quick Statistics
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
-                >
-                  <h4 className="text-sm text-Elegant-Gold font-bold">{stat.label}</h4>
-                  <p className="text-2xl font-bold text-Brown mt-2">
-                    {stat.value}
-                  </p>
-                </div>
-              ))}
+      {/* Quick Stats */}
+      <h3 className="text-lg font-bold text-Brown mb-4">Quick Statistics</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          <div className="col-span-full flex justify-center items-center py-10">
+            <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
+            >
+              <h4 className="text-sm text-Elegant-Gold font-bold">{stat.label}</h4>
+              <p className="text-2xl font-bold text-Brown mt-2">{stat.value}</p>
             </div>
+          ))
+        )}
+      </div>
 
-            <h3 className="text-lg font-bold text-Brown mt-8 mb-4">
-              Recent Activities
-            </h3>
-            <ul className="bg-gray-200 p-4 rounded-lg shadow-md">
-              {recentActivities.map((activity, index) => (
-                <li
-                  key={index}
-                  className="flex justify-between items-center py-2"
-                >
-                  <span className="text-Elegant-Gold">{activity.description}</span>
-                  <span className="text-sm text-Elegant-Gold">
-                    {activity.timestamp}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+      {/* Monthly Revenue Chart */}
+      <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Monthly Revenue</h3>
+     {monthlyRevenue.length > 0 ? (
+  <Bar data={chartData} options={chartOptions} />
+) : (
+  <p className="text-center text-Brown py-4">
+    Revenue is data loading....
+  </p>
+)}
+
+
+      {/* Recent Activities */}
+      <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Recent Activities</h3>
+  <ul className="bg-gray-200 p-4 rounded-lg shadow-md">
+  {isLoading ? (
+    <li className="flex justify-center items-center py-6">
+      <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+    </li>
+  ) : recentActivities.length === 0 ? (
+    <li className="text-center text-Brown py-4">
+      No recent activities found.
+    </li>
+  ) : (
+    recentActivities.map((activity, index) => (
+      <li
+        key={index}
+        className="flex justify-between items-center py-2 border-b last:border-b-0"
+      >
+        <span className="text-lg text-Brown">
+          {activity.description}
+        </span>
+
+        <span className="text-lg text-Brown">
+          {new Date(activity.timestamp).toLocaleString("en-NG", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+          })}
+        </span>
+      </li>
+    ))
+  )}
+</ul>
+
+
+      {/* Pagination */}
+{totalPages > 1 && (
+  <div className="flex justify-center mt-4 space-x-2">
+    <button
+      disabled={page === 1}
+      onClick={() => setPage((prev) => prev - 1)}
+      className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+    >
+      Prev
+    </button>
+    <span className="px-4 py-2">{`Page ${page} of ${totalPages}`}</span>
+    <button
+      disabled={page === totalPages}
+      onClick={() => setPage((prev) => prev + 1)}
+      className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+    >
+      Next
+    </button>
+  </div>
+)}
+
+    </section>
         )}
 
 {activeSection === "Create Agent" && formData && (

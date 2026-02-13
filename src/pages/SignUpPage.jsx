@@ -31,6 +31,10 @@ const SignUpPage = () => {
     if (!formData.email) validationErrors.email = "Email is required";
     if (!/\S+@\S+\.\S+/.test(formData.email))
       validationErrors.email = "Please enter a valid email address";
+    if (!formData.phone)
+    validationErrors.phone = "Phone number is required";
+  else if (!/^\d{11}$/.test(formData.phone))
+    validationErrors.phone = "Phone number must be exactly 11 digits";
     if (!formData.password) validationErrors.password = "Password is required";
     if (formData.password !== formData.confirmPassword)
       validationErrors.confirmPassword = "Passwords do not match";
@@ -137,6 +141,8 @@ const SignUpPage = () => {
               className="block w-full px-3 py-2 border rounded-md"
               placeholder="Phone Number"
             />
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+
           </div>
 
           <div>

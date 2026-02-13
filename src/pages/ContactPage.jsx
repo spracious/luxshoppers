@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // ✅ 1. Added useEffect here
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from "react-icons/fa";
+import { BASEURL } from "../constant";
 
-const API_URL = "http://localhost:10000/api/contact/send"; // Replace with your backend URL
+
+// const API_URL = "https://errandgirlie-backend.onrender.com/send"; // Replace with your backend URL
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +14,23 @@ const ContactPage = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+  // const [successMessage, setSuccessMessage] = useState(null);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+
+
+    // Auto-fill from logged in currentUser
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (storedUser) {
+      setFormData((prev) => ({
+        ...prev,
+        name: storedUser.name || "",
+        email: storedUser.email || "",
+      }));
+    }
+  }, []);
 
   // Handle input changes
   const handleChange = (e) => {
@@ -22,10 +40,7 @@ const ContactPage = () => {
 
   // Basic validation
   const validateForm = () => {
-    const { name, email, message } = formData;
-    if (!name || !email || !message) return "All fields are required.";
-    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailPattern.test(email)) return "Please enter a valid email address.";
+    if (!formData.message) return "Message is required.";
     return null;
   };
 
@@ -39,15 +54,16 @@ const ContactPage = () => {
     }
 
     setError(null);
-    setSuccessMessage(null);
+    // setSuccessMessage(null);
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+     const response = await fetch(`${BASEURL}/contact/send`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(formData),
+});
+
 
       const data = await response.json();
 
@@ -55,8 +71,21 @@ const ContactPage = () => {
         throw new Error(data.message || "Failed to send message");
       }
 
-      setSuccessMessage("Your message has been sent successfully 🎉");
-      setFormData({ name: "", email: "", message: "" });
+         // ✅ Show popup
+      setShowSuccessPopup(true);
+      // setSuccessMessage("Your message has been sent successfully 🎉");
+      // setFormData({ name: "", email: "", message: "" });
+           // Clear message field
+      setFormData((prev) => ({
+        ...prev,
+        message: "",
+      }));
+
+          // Auto close after 3 seconds
+      setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 3000);
+
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -79,11 +108,25 @@ const ContactPage = () => {
           <div className="bg-gray-50 rounded-lg shadow-lg p-8">
             <h2 className="text-3xl text-Elegant-Gold font-semibold mb-6">Send Us a Message</h2>
 
-            {successMessage && (
-              <div className="bg-green-100 text-green-700 p-4 rounded-md mb-4">
-                {successMessage}
-              </div>
-            )}
+                 {/* ✅ SUCCESS POPUP MODAL */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-8 rounded-xl shadow-2xl text-center w-80 animate-bounce">
+            <h3 className="text-xl font-bold text-green-600 mb-4">
+              🎉 Message Sent!
+            </h3>
+            <p className="text-gray-700 mb-6">
+              Your message has been sent successfully.
+            </p>
+            <button
+              onClick={() => setShowSuccessPopup(false)}
+              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
             {error && (
               <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4">
                 {error}
@@ -98,6 +141,7 @@ const ContactPage = () => {
                   id="name"
                   name="name"
                   value={formData.name}
+                  readOnly
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
                   required
@@ -111,6 +155,7 @@ const ContactPage = () => {
                   id="email"
                   name="email"
                   value={formData.email}
+                  readOnly
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
                   required
