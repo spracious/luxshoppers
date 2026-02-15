@@ -323,16 +323,21 @@ const chartOptions = {
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
 
   
-  useEffect(() => {
-  const fetchStats = async () => {
+ 
+const fetchStats = async () => {
+  try {
     const res = await axios.get(`${BASEURL}/admin/service-stats`);
     setServices(res.data);
-  };
+  } catch (error) {
+    console.error("Failed to fetch service stats:", error);
+  }
+};
 
+useEffect(() => {
   fetchStats();
 }, []);
 
-// 1️⃣ Define the function OUTSIDE useEffect so buttons can use it
+
   const fetchErrands = async () => {
     try {
       // Optional: Handle status mapping if your tabs are "In Progress" but API needs "in-progress"
@@ -855,55 +860,50 @@ const chartOptions = {
         
         )}
 
-        {activeSection === "Services" && (
-          <section>
-      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
-              Service Analytics
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {services.map((service) => (
-                <div
-                  key={service.name}
-                  className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
-                >
-                  <h4 className="text-lg font-bold text-Elegant-Gold">
-                    {service.name}
-                  </h4>
-                    <p className="text-lg mt-2 text-Brown">
-                    Pending: {" "}
-                    <span className="font-bold text-Brown">
-                      {service.pending}
-                    </span>
-                  </p>
-                  <p className="text-lg mt-2 text-Brown">
-                    In Progress: {" "}
-                    <span className="font-bold text-yellow-500">
-                      {service.in-progress}
-                    </span>
-                  </p>
-                  <p className="text-lg text-Brown">
-                    Completed: {" "}
-                    <span className="font-bold text-green">
-                      {service.completed}
-                    </span>
-                  </p>
-                  <p className="text-lg text-Brown">
-                    Over Due: {" "}
-                    <span className="font-bold text-red-500">
-                      {service.overdue}
-                    </span>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+{activeSection === "Services" && (
+  <section>
+    <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+      Service Analytics
+    </h2>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {services.map((service) => (
+        <div
+          key={service.name}
+          className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
+        >
+          <h4 className="text-lg font-bold text-Elegant-Gold">{service.name}</h4>
+
+          <p className="text-lg mt-2 text-Brown">
+            Pending:{" "}
+            <span className="font-bold text-Brown">{service.pending || 0}</span>
+          </p>
+
+          <p className="text-lg mt-2 text-Brown">
+            In Progress:{" "}
+            <span className="font-bold text-yellow-500">{service.inProgress || 0}</span>
+          </p>
+
+          <p className="text-lg text-Brown">
+            Completed:{" "}
+            <span className="font-bold text-green">{service.completed || 0}</span>
+          </p>
+
+          <p className="text-lg text-Brown">
+            Overdue:{" "}
+            <span className="font-bold text-red-500">{service.overdue || 0}</span>
+          </p>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
 
 {activeSection === "Errands" && (
   <section>
-    <h3 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+    <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
       Errands
-    </h3>
+    </h2>
 
     {/* Tabs */}
     <div className="flex flex-wrap gap-2 mb-4 justify-start">
@@ -964,7 +964,7 @@ const chartOptions = {
               <th className="py-2 px-4">Location</th>
               <th className="py-2 px-4">Address</th>
               <th className="py-2 px-4">Voucher Type</th>
-              <th className="py-2 px-4">Voucher Amount</th>
+              {/* <th className="py-2 px-4">Voucher Amount</th> */}
               <th className="py-2 px-4">Total Cost</th>
               <th className="py-2 px-4">Created Date</th>
               <th className="py-2 px-4">Due Date</th>
@@ -1022,7 +1022,7 @@ const chartOptions = {
                     <td className="py-2 px-4">{notif.location}</td>
                     <td className="py-2 px-4">{notif.address}</td>
                     <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
-                    <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td>
+                    {/* <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td> */}
                     <td className="py-2 px-4">{notif.estimatedCost}</td>
                     <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
                     <td className="py-2 px-4">
