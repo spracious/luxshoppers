@@ -1118,12 +1118,6 @@ useEffect(() => {
   </section>
 )}
 
-
-
-
-
-
-
 {activeSection === "Reports" && (
   <section className="p-6 bg-gray-50 rounded-lg shadow-md">
     <header className="mb-6">
@@ -1280,8 +1274,6 @@ useEffect(() => {
     </div>
   </section>
 )}
-
-
 
 {activeSection === "Settings" && (
   <section className="p-6 bg-white rounded-lg shadow-md">
