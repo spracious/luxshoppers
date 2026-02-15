@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BASEURL } from "../constant";
+import axios from "axios";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -32,6 +33,7 @@ const AdminDashboard = () => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [activeMessageTab, setActiveMessageTab] = useState("Unattended");
   const [agents, setAgents] = useState([]);
+  const [services, setServices] = useState([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -41,6 +43,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [notification, setNotification] = useState([]);
+  const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [errors, setErrors] = useState({});
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
@@ -165,11 +168,12 @@ const chartOptions = {
     return validationErrors;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
 
+    // Validate inputs
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -184,26 +188,37 @@ const chartOptions = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-          // credentials: "include" // ✅ important if backend uses cookies or sessions
       });
 
       const data = await response.json();
-      console.log("API Response:", data); // Debugging
 
       if (!response.ok) throw new Error(data.message || "Signup failed");
 
-      // Store user data in localStorage
+      // Store user data
       const userData = {
         name: formData.name,
         email: formData.email,
         role: formData.role,
       };
+      localStorage.setItem("currentUser", JSON.stringify(userData));
 
-      localStorage.setItem("user", JSON.stringify(userData));
-      console.log("User stored in localStorage:", userData);
+      // ✅ CLEAR FORM DATA HERE
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        phone: "",
+        role: "agent", // Reset to default role (or "user")
+        terms: false,
+      });
 
-      setSuccessMessage("Signup successful! Redirecting...");
-      setTimeout(() => navigate("/home"), 2000); // Redirect after 2 seconds
+      // Show success message
+      setSuccessMessage("Agent created successfully! Redirecting...");
+      
+      // Redirect after 2 seconds
+      setTimeout(() => navigate("/AdminDashboard"), 2000); 
+
     } catch (error) {
       console.error("Signup Error:", error.message);
       setErrors({ apiError: error.message });
@@ -280,7 +295,7 @@ const chartOptions = {
     // implement delete logic
   };
 
-    if (isLoading) return <p>Loading agents...</p>;
+    // if (isLoading) return <p>Loading agents...</p>;
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
 
       // User Pagination Logic
@@ -300,18 +315,63 @@ const chartOptions = {
     // implement delete logic
   };
 
-  if (isLoading) return <p>Loading users...</p>;
+  // if (isLoading) return <p>Loading users...</p>;
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
 
   
-    // Function to generate a strong random password
-    const generatePassword = () => {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-      return Array(10)
-        .fill("")
-        .map(() => chars[Math.floor(Math.random() * chars.length)])
-        .join("");
-    };
+  useEffect(() => {
+  const fetchStats = async () => {
+    const res = await axios.get(`${BASEURL}/admin/service-stats`);
+    setServices(res.data);
+  };
+
+  fetchStats();
+}, []);
+
+// 1️⃣ Define the function OUTSIDE useEffect so buttons can use it
+  const fetchErrands = async () => {
+    try {
+      // Optional: Handle status mapping if your tabs are "In Progress" but API needs "in-progress"
+      let statusParam = activeMessageTab;
+      if (activeMessageTab === "In Progress") statusParam = "in-progress"; 
+      if (activeMessageTab === "Over Due") statusParam = "overdue";
+      if (activeMessageTab === "Pending") statusParam = "pending";
+      if (activeMessageTab === "Completed") statusParam = "completed";
+
+      const res = await axios.get(
+        `${BASEURL}/admin/errands`,
+        {
+          params: {
+            status: statusParam, // Use the mapped status
+            page,
+            limit: 10,
+          },
+        }
+      );
+
+      setFilteredNotifications(res.data.errands);
+      setTotalPages(res.data.totalPages);
+    } catch (error) {
+      console.error("Error fetching errands:", error);
+    }
+  };
+
+  // 2️⃣ Call it INSIDE useEffect when tabs or page change
+  useEffect(() => {
+    fetchErrands();
+  }, [activeMessageTab, page]);
+
+
+
+
+
+    // const generatePassword = () => {
+    //   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    //   return Array(10)
+    //     .fill("")
+    //     .map(() => chars[Math.floor(Math.random() * chars.length)])
+    //     .join("");
+    // };
   
     // Handle input changes & auto-generate username and password
     // const handleChange = (event) => {
@@ -347,23 +407,7 @@ const chartOptions = {
 
   const handleLogout = () => navigate("/login");
 
-  const services = [
-    { name: "Groceries", completed: 15, ongoing: 5, pending: 2 },
-    { name: "Deliveries", completed: 10, ongoing: 2, pending: 1 },
-    { name: "Errands", completed: 20, ongoing: 3, pending: 0 },
-  ];
 
-  const notifications = [
-    { id: 1, title: "Message 1", timestamp: "10 mins ago", details: "Details for Message 1", status: "unattended" },
-    { id: 2, title: "Message 2", timestamp: "30 mins ago", details: "Details for Message 2", status: "pending" },
-    { id: 3, title: "Message 3", timestamp: "1 hour ago", details: "Details for Message 3", status: "executed" },
-    { id: 4, title: "Message 4", timestamp: "2 hours ago", details: "Details for Message 4", status: "unattended" },
-    { id: 5, title: "Message 5", timestamp: "5 hours ago", details: "Details for Message 5", status: "pending" },
-  ];
-
-  const filteredNotifications = notifications.filter(
-    (notif) => notif.status === activeMessageTab.toLowerCase()
-  );
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -522,8 +566,12 @@ const chartOptions = {
     Agent Registration
   </h2>
      {errors.apiError && <p className="text-red-500 text-sm text-center">{errors.apiError}</p>}
-        {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
-
+{successMessage && (
+  <div className="mb-4 bg-green border border-green-400 text-green-700 px-4 py-3 rounded relative text-center">
+    <strong className="font-bold">Success!</strong>
+    <span className="block sm:inline"> {successMessage}</span>
+  </div>
+)}
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           <div>
             <input
@@ -805,34 +853,40 @@ const chartOptions = {
 
         {activeSection === "Services" && (
           <section>
-            <h3 className="text-lg font-bold text-orange-400 mb-4">
+      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
               Service Analytics
-            </h3>
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {services.map((service) => (
                 <div
                   key={service.name}
                   className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
                 >
-                  <h4 className="text-lg font-bold text-orange-400">
+                  <h4 className="text-lg font-bold text-Elegant-Gold">
                     {service.name}
                   </h4>
-                  <p className="text-sm mt-2">
-                    Completed:{" "}
-                    <span className="font-bold text-orange-500">
+                    <p className="text-lg mt-2 text-Brown">
+                    Pending: {" "}
+                    <span className="font-bold text-Brown">
+                      {service.pending}
+                    </span>
+                  </p>
+                  <p className="text-lg mt-2 text-Brown">
+                    In Progress: {" "}
+                    <span className="font-bold text-yellow-500">
+                      {service.in-progress}
+                    </span>
+                  </p>
+                  <p className="text-lg text-Brown">
+                    Completed: {" "}
+                    <span className="font-bold text-green">
                       {service.completed}
                     </span>
                   </p>
-                  <p className="text-sm">
-                    Ongoing:{" "}
-                    <span className="font-bold text-blue-500">
-                      {service.ongoing}
-                    </span>
-                  </p>
-                  <p className="text-sm">
-                    Pending:{" "}
-                    <span className="font-bold text-green-500">
-                      {service.pending}
+                  <p className="text-lg text-Brown">
+                    Over Due: {" "}
+                    <span className="font-bold text-red-500">
+                      {service.overdue}
                     </span>
                   </p>
                 </div>
@@ -841,73 +895,187 @@ const chartOptions = {
           </section>
         )}
 
-        {activeSection === "Errands" && (
-          <section>
-            <h3 className="text-lg font-bold text-orangee mb-4">
-              Your Errands
-            </h3>
+{activeSection === "Errands" && (
+  <section>
+    <h3 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+      Errands
+    </h3>
 
-            {!selectedNotification ? (
-              
-              <>
-                <div className="flex space-x-4 mb-4">
-                  {["Unattended", "Pending", "Executed"].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveMessageTab(tab)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                        activeMessageTab === tab
-                          ? "bg-orangee text-white"
-                          : "bg-green text-white hover:bg-orange-300"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
+    {/* Tabs */}
+    <div className="flex flex-wrap gap-2 mb-4 justify-start">
+      {["Pending", "In Progress", "Over Due", "Completed"].map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveMessageTab(tab)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            activeMessageTab === tab
+              ? "bg-Brown text-white"
+              : "bg-Elegant-Gold text-white hover:bg-orange-200"
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
 
-                {filteredNotifications.length > 0 ? (
-                  <ul className="bg-gray-100 p-4 rounded-lg shadow-md">
-                    {filteredNotifications.map((notif) => (
-                      <li
-                        key={notif.id}
-                        onClick={() => setSelectedNotification(notif)} 
-                        className="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-200 px-2 rounded-md"
+    {/* Success Message */}
+    {successMessage && (
+      <div className="fixed top-5 right-5 z-50 bg-green text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
+        {successMessage}
+      </div>
+    )}
+
+    {/* Errands Table */}
+    {filteredNotifications.length > 0 ? (
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-gray-100 rounded-lg shadow-md">
+          <thead>
+            <tr className="bg-gray-200 text-left text-Brown">
+              <th className="py-2 px-4">Service</th>
+              <th className="py-2 px-4">Errand</th>
+              <th className="py-2 px-4">Location</th>
+              <th className="py-2 px-4">Address</th>
+              <th className="py-2 px-4">Voucher Type</th>
+              <th className="py-2 px-4">Voucher Amount</th>
+              <th className="py-2 px-4">Total Cost</th>
+              <th className="py-2 px-4">Created Date</th>
+              <th className="py-2 px-4">Due Date</th>
+              <th className="py-2 px-4">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredNotifications.map((notif) => {
+              // Automatic Overdue Detection
+              const now = new Date();
+              const isOverdue =
+                notif.status !== "completed" &&
+                notif.dueDate &&
+                new Date(notif.dueDate) < now;
+
+              if (isOverdue && notif.status !== "overdue") {
+                notif.status = "overdue";
+                axios
+                  .patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, {
+                    status: "overdue",
+                  })
+                  .catch(console.error);
+              }
+
+              // Show only rows matching the active tab
+              const showRow =
+                (activeMessageTab === "Pending" && notif.status === "pending") ||
+                (activeMessageTab === "In Progress" && notif.status === "in-progress") ||
+                (activeMessageTab === "Over Due" && notif.status === "overdue") ||
+                (activeMessageTab === "Completed" && notif.status === "completed");
+
+              if (!showRow) return null;
+
+              return (
+                <tr key={notif.id || notif._id} className="hover:bg-gray-200 text-left">
+                  <td className="py-2 px-4">{notif.title}</td>
+                  <td className="py-2 px-4">{notif.details}</td>
+                  <td className="py-2 px-4">{notif.location}</td>
+                  <td className="py-2 px-4">{notif.address}</td>
+                  <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
+                  <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td>
+                  <td className="py-2 px-4">{notif.estimatedCost}</td>
+                  <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
+                  <td className="py-2 px-4">
+                    {notif.dueDate ? new Date(notif.dueDate).toLocaleDateString() : "Not Set"}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-2 px-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
+                    {/* Ongoing Button */}
+                    {notif.status === "pending" && (
+                      <button
+                        className="bg-orange-300 px-3 py-1 rounded text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition"
+                        onClick={async () => {
+                          try {
+                            await axios.patch(
+                              `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
+                              { status: "in-progress" }
+                            );
+                            fetchErrands();
+                            setSuccessMessage("Errand moved to Ongoing! 🚀");
+                            setTimeout(() => setSuccessMessage(""), 3000);
+                          } catch (error) {
+                            console.error("Update failed:", error);
+                            alert("Failed to update status.");
+                          }
+                        }}
                       >
-                        <span className="text-gray-700">{notif.title}</span>
-                        <span className="text-sm text-gray-500">
-                          {notif.timestamp}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-orangee">
-                    No {activeMessageTab.toLowerCase()} messages.
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="bg-gray-200 p-6 rounded-lg shadow-md">
-                <h4 className="text-xl font-bold text-green mb-4">
-                  {selectedNotification.title}
-                </h4>
-                <p className="text-sm text-orangee mb-2">
-                  {selectedNotification.timestamp}
-                </p>
-                <p className="text-green mb-4">
-                  {selectedNotification.details}
-                </p>
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-orangee px-4 py-2 rounded-lg"
-                  onClick={() => setSelectedNotification(null)} 
-                >
-                  Back to Messages
-                </button>
-              </div>
-            )}
-          </section>
-        )}
+                        Ongoing
+                      </button>
+                    )}
+
+                    {/* Completed Button */}
+                    {notif.status !== "completed" && (
+                      <button
+                        disabled={notif.status === "pending"}
+                        className={`px-3 py-1 rounded text-sm font-medium w-full sm:w-auto transition ${
+                          notif.status === "pending"
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-orange-300 text-white hover:bg-orange-400"
+                        }`}
+                        onClick={async () => {
+                          if (notif.status === "pending") return;
+                          try {
+                            await axios.patch(
+                              `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
+                              { status: "completed" }
+                            );
+                            fetchErrands();
+                            setSuccessMessage("Errand moved to Completed! 🎉");
+                            setTimeout(() => setSuccessMessage(""), 3000);
+                          } catch (error) {
+                            console.error("Update failed:", error);
+                            alert("Failed to update status.");
+                          }
+                        }}
+                      >
+                        Completed
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p className="text-Brown mt-4">No errands found for this tab.</p>
+    )}
+
+    {/* Pagination */}
+    <div className="flex justify-center mt-4 space-x-2">
+      <button
+        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+        onClick={() => setPage(page - 1)}
+        disabled={page === 1}
+      >
+        Prev
+      </button>
+      <span>
+        Page {page} of {totalPages}
+      </span>
+      <button
+        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+        onClick={() => setPage(page + 1)}
+        disabled={page === totalPages}
+      >
+        Next
+      </button>
+    </div>
+  </section>
+)}
+
+
+
+
+
 
 {activeSection === "Reports" && (
   <section className="p-6 bg-gray-50 rounded-lg shadow-md">
@@ -1195,6 +1363,11 @@ const chartOptions = {
 
 
       </main>
+            {/* <footer className="bg-Brown text-Elegant-Gold font-bold py-6 mt-auto text-center">
+        <p>
+          &copy; {new Date().getFullYear()} LuxShoppers. All rights reserved.
+        </p>
+      </footer> */}
     </div>
   );
 };
