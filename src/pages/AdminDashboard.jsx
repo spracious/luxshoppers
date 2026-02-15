@@ -51,6 +51,10 @@ const AdminDashboard = () => {
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [searchService, setSearchService] = useState("");
+const [searchLocation, setSearchLocation] = useState("");
+const [searchDueDate, setSearchDueDate] = useState("");
+
   const fetchDashboard = async (currentPage = 1) => {
   setIsLoading(true);
   try {
@@ -918,6 +922,30 @@ const chartOptions = {
       ))}
     </div>
 
+    {/* Search / Filters */}
+    <div className="flex flex-wrap gap-4 mb-4 items-center">
+      <input
+        type="text"
+        placeholder="Search by Service"
+        className="px-3 py-2 rounded border border-gray-300 w-48"
+        value={searchService}
+        onChange={(e) => setSearchService(e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Search by Location"
+        className="px-3 py-2 rounded border border-gray-300 w-48"
+        value={searchLocation}
+        onChange={(e) => setSearchLocation(e.target.value)}
+      />
+      <input
+        type="date"
+        className="px-3 py-2 rounded border border-gray-300"
+        value={searchDueDate}
+        onChange={(e) => setSearchDueDate(e.target.value)}
+      />
+    </div>
+
     {/* Success Message */}
     {successMessage && (
       <div className="fixed top-5 right-5 z-50 bg-green text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
@@ -945,108 +973,126 @@ const chartOptions = {
           </thead>
 
           <tbody>
-            {filteredNotifications.map((notif) => {
-              // Automatic Overdue Detection
-              const now = new Date();
-              const isOverdue =
-                notif.status !== "completed" &&
-                notif.dueDate &&
-                new Date(notif.dueDate) < now;
+            {filteredNotifications
+              .filter((notif) => {
+                // Filter by search inputs
+                const matchService = notif.title
+                  .toLowerCase()
+                  .includes(searchService.toLowerCase());
+                const matchLocation = notif.location
+                  .toLowerCase()
+                  .includes(searchLocation.toLowerCase());
+                const matchDueDate =
+                  !searchDueDate ||
+                  (notif.dueDate &&
+                    new Date(notif.dueDate).toISOString().slice(0, 10) ===
+                      searchDueDate);
+                return matchService && matchLocation && matchDueDate;
+              })
+              .map((notif) => {
+                // Automatic Overdue Detection
+                const now = new Date();
+                const isOverdue =
+                  notif.status !== "completed" &&
+                  notif.dueDate &&
+                  new Date(notif.dueDate) < now;
 
-              if (isOverdue && notif.status !== "overdue") {
-                notif.status = "overdue";
-                axios
-                  .patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, {
-                    status: "overdue",
-                  })
-                  .catch(console.error);
-              }
+                if (isOverdue && notif.status !== "overdue") {
+                  notif.status = "overdue";
+                  axios
+                    .patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, {
+                      status: "overdue",
+                    })
+                    .catch(console.error);
+                }
 
-              // Show only rows matching the active tab
-              const showRow =
-                (activeMessageTab === "Pending" && notif.status === "pending") ||
-                (activeMessageTab === "In Progress" && notif.status === "in-progress") ||
-                (activeMessageTab === "Over Due" && notif.status === "overdue") ||
-                (activeMessageTab === "Completed" && notif.status === "completed");
+                // Show only rows matching the active tab
+                const showRow =
+                  (activeMessageTab === "Pending" && notif.status === "pending") ||
+                  (activeMessageTab === "In Progress" && notif.status === "in-progress") ||
+                  (activeMessageTab === "Over Due" && notif.status === "overdue") ||
+                  (activeMessageTab === "Completed" && notif.status === "completed");
 
-              if (!showRow) return null;
+                if (!showRow) return null;
 
-              return (
-                <tr key={notif.id || notif._id} className="hover:bg-gray-200 text-left">
-                  <td className="py-2 px-4">{notif.title}</td>
-                  <td className="py-2 px-4">{notif.details}</td>
-                  <td className="py-2 px-4">{notif.location}</td>
-                  <td className="py-2 px-4">{notif.address}</td>
-                  <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
-                  <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td>
-                  <td className="py-2 px-4">{notif.estimatedCost}</td>
-                  <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
-                  <td className="py-2 px-4">
-                    {notif.dueDate ? new Date(notif.dueDate).toLocaleDateString() : "Not Set"}
-                  </td>
+                return (
+                  <tr key={notif.id || notif._id} className="hover:bg-gray-200 text-left">
+                    <td className="py-2 px-4">{notif.title}</td>
+                    <td className="py-2 px-4">{notif.details}</td>
+                    <td className="py-2 px-4">{notif.location}</td>
+                    <td className="py-2 px-4">{notif.address}</td>
+                    <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
+                    <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td>
+                    <td className="py-2 px-4">{notif.estimatedCost}</td>
+                    <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
+                    <td className="py-2 px-4">
+                      {notif.dueDate
+                        ? new Date(notif.dueDate).toLocaleDateString()
+                        : "Not Set"}
+                    </td>
 
-                  {/* Actions */}
-                  <td className="py-2 px-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
-                    {/* Ongoing Button */}
-                    {notif.status === "pending" && (
-                      <button
-                        className="bg-orange-300 px-3 py-1 rounded text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition"
-                        onClick={async () => {
-                          try {
-                            await axios.patch(
-                              `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
-                              { status: "in-progress" }
-                            );
-                            fetchErrands();
-                            setSuccessMessage("Errand moved to Ongoing! 🚀");
-                            setTimeout(() => setSuccessMessage(""), 3000);
-                          } catch (error) {
-                            console.error("Update failed:", error);
-                            alert("Failed to update status.");
-                          }
-                        }}
-                      >
-                        Ongoing
-                      </button>
-                    )}
+                    {/* Actions */}
+                    <td className="py-2 px-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
+                      {/* Ongoing Button */}
+                      {notif.status === "pending" && (
+                        <button
+                          className="bg-orange-300 px-3 py-1 rounded text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition"
+                          onClick={async () => {
+                            try {
+                              await axios.patch(
+                                `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
+                                { status: "in-progress" }
+                              );
+                              fetchErrands();
+                              setSuccessMessage("Errand moved to Ongoing! 🚀");
+                              setTimeout(() => setSuccessMessage(""), 3000);
+                            } catch (error) {
+                              console.error("Update failed:", error);
+                              alert("Failed to update status.");
+                            }
+                          }}
+                        >
+                          Ongoing
+                        </button>
+                      )}
 
-                    {/* Completed Button */}
-                    {notif.status !== "completed" && (
-                      <button
-                        disabled={notif.status === "pending"}
-                        className={`px-3 py-1 rounded text-sm font-medium w-full sm:w-auto transition ${
-                          notif.status === "pending"
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-orange-300 text-white hover:bg-orange-400"
-                        }`}
-                        onClick={async () => {
-                          if (notif.status === "pending") return;
-                          try {
-                            await axios.patch(
-                              `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
-                              { status: "completed" }
-                            );
-                            fetchErrands();
-                            setSuccessMessage("Errand moved to Completed! 🎉");
-                            setTimeout(() => setSuccessMessage(""), 3000);
-                          } catch (error) {
-                            console.error("Update failed:", error);
-                            alert("Failed to update status.");
-                          }
-                        }}
-                      >
-                        Completed
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                      {/* Completed Button */}
+                      {notif.status !== "completed" && (
+                        <button
+                          disabled={notif.status === "pending"}
+                          className={`px-3 py-1 rounded text-sm font-medium w-full sm:w-auto transition ${
+                            notif.status === "pending"
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                              : "bg-orange-300 text-white hover:bg-orange-400"
+                          }`}
+                          onClick={async () => {
+                            if (notif.status === "pending") return;
+                            try {
+                              await axios.patch(
+                                `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
+                                { status: "completed" }
+                              );
+                              fetchErrands();
+                              setSuccessMessage("Errand moved to Completed! 🎉");
+                              setTimeout(() => setSuccessMessage(""), 3000);
+                            } catch (error) {
+                              console.error("Update failed:", error);
+                              alert("Failed to update status.");
+                            }
+                          }}
+                        >
+                          Completed
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
     ) : (
-      <p className="text-Brown mt-4">No errands found for this tab.</p>
+      <p className="text-Brown mt-4">Select tab to see errands.</p>
     )}
 
     {/* Pagination */}
@@ -1071,6 +1117,7 @@ const chartOptions = {
     </div>
   </section>
 )}
+
 
 
 
