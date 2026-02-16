@@ -53,8 +53,18 @@ const AdminDashboard = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [searchService, setSearchService] = useState("");
 const [searchLocation, setSearchLocation] = useState("");
-const [searchDueDate, setSearchDueDate] = useState("");
+const [searchUser, setSearchUser] = useState("");
+const [reportData, setReportData] = useState([]);
+const [reportStats, setReportStats] = useState({ total: 0, monthly: 0, pending: 0 });
+const [reportLoading, setReportLoading] = useState(false);
 
+const [filters, setFilters] = useState({
+  type: "", // matches backend: agents, users, errands, payments
+  startDate: "",
+  endDate: "",
+  sortBy: "date",
+});
+  const [loading, setLoading] = useState(false);
   const fetchDashboard = async (currentPage = 1) => {
   setIsLoading(true);
   try {
@@ -321,8 +331,7 @@ const chartOptions = {
 
   // if (isLoading) return <p>Loading users...</p>;
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
-
-  
+ 
  
 const fetchStats = async () => {
   try {
@@ -365,11 +374,106 @@ useEffect(() => {
     }
   };
 
-  // 2️⃣ Call it INSIDE useEffect when tabs or page change
   useEffect(() => {
     fetchErrands();
   }, [activeMessageTab, page]);
 
+
+// 2️⃣ FETCH REPORTS & STATS
+const fetchReports = async () => {
+  try {
+    setReportLoading(true);
+
+    // ✅ 1. Get Token from LocalStorage
+    // Adjust "currentUser" if you store the token under a different key like "token"
+    const storedUser = JSON.parse(localStorage.getItem("currentUser"));
+    const token = storedUser?.token || localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No authentication token found. Please log in.");
+      return;
+    }
+
+    // ✅ 2. Create Header Config
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    // ✅ 3. Prepare Query Params
+    const params = {
+      type: filters.type,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      sortBy: filters.sortBy,
+    };
+
+    // ✅ 4. Pass 'headers' AND 'params' to Axios
+    const [dataRes, statsRes] = await Promise.all([
+      axios.get(`${BASEURL}/admin/reports`, {
+        headers: authHeaders, // <--- Added
+        params: params,
+      }),
+      axios.get(`${BASEURL}/admin/reports/stats`, {
+        headers: authHeaders, // <--- Added
+        params: { type: filters.type },
+      }),
+    ]);
+
+    setReportData(dataRes.data.reports || []);
+    setReportStats(statsRes.data || { total: 0, monthly: 0, pending: 0 });
+
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+    if (error.response && error.response.status === 401) {
+       alert("Session expired. Please login again.");
+    }
+  } finally {
+    setReportLoading(false);
+  }
+};
+
+// 3️⃣ HANDLE INPUT CHANGE
+const handleFilterChange = (e) => {
+  setFilters({ ...filters, [e.target.name]: e.target.value });
+};
+
+// 4️⃣ LOAD DATA ON ENTERING SECTION
+useEffect(() => {
+  if (activeSection === "Reports") {
+    fetchReports();
+  }
+}, [activeSection]);
+
+
+const handleExportExcel = async () => {
+  try {
+    const params = {
+      type: filters.type,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      sortBy: filters.sortBy,
+    };
+
+    const response = await axios.get(
+      `${BASEURL}/admin/reports/export`,
+      {
+        params,
+        responseType: "blob",
+      }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `reports_${Date.now()}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+  } catch (error) {
+    console.error("Export failed:", error);
+  }
+};
 
 
 
@@ -924,6 +1028,13 @@ useEffect(() => {
 
     {/* Search / Filters */}
     <div className="flex flex-wrap gap-4 mb-4 items-center">
+        <input
+    type="text"
+    placeholder="Search by User"
+    className="px-3 py-2 rounded border border-gray-300 w-48"
+    value={searchUser}
+    onChange={(e) => setSearchUser(e.target.value)}
+  />
       <input
         type="text"
         placeholder="Search by Service"
@@ -937,12 +1048,6 @@ useEffect(() => {
         className="px-3 py-2 rounded border border-gray-300 w-48"
         value={searchLocation}
         onChange={(e) => setSearchLocation(e.target.value)}
-      />
-      <input
-        type="date"
-        className="px-3 py-2 rounded border border-gray-300"
-        value={searchDueDate}
-        onChange={(e) => setSearchDueDate(e.target.value)}
       />
     </div>
 
@@ -959,12 +1064,12 @@ useEffect(() => {
         <table className="min-w-full bg-gray-100 rounded-lg shadow-md">
           <thead>
             <tr className="bg-gray-200 text-left text-Brown">
+              <th className="py-2 px-4">Client</th>
               <th className="py-2 px-4">Service</th>
               <th className="py-2 px-4">Errand</th>
               <th className="py-2 px-4">Location</th>
               <th className="py-2 px-4">Address</th>
               <th className="py-2 px-4">Voucher Type</th>
-              {/* <th className="py-2 px-4">Voucher Amount</th> */}
               <th className="py-2 px-4">Total Cost</th>
               <th className="py-2 px-4">Created Date</th>
               <th className="py-2 px-4">Due Date</th>
@@ -974,21 +1079,22 @@ useEffect(() => {
 
           <tbody>
             {filteredNotifications
-              .filter((notif) => {
-                // Filter by search inputs
-                const matchService = notif.title
-                  .toLowerCase()
-                  .includes(searchService.toLowerCase());
-                const matchLocation = notif.location
-                  .toLowerCase()
-                  .includes(searchLocation.toLowerCase());
-                const matchDueDate =
-                  !searchDueDate ||
-                  (notif.dueDate &&
-                    new Date(notif.dueDate).toISOString().slice(0, 10) ===
-                      searchDueDate);
-                return matchService && matchLocation && matchDueDate;
-              })
+             .filter((notif) => {
+  const matchService = notif.title
+    ?.toLowerCase()
+    .includes(searchService.toLowerCase());
+
+  const matchLocation = notif.location
+    ?.toLowerCase()
+    .includes(searchLocation.toLowerCase());
+
+  const matchUser = notif.user?.name
+    ?.toLowerCase()
+    .includes(searchUser.toLowerCase());
+
+  return matchService && matchLocation && matchUser;
+})
+
               .map((notif) => {
                 // Automatic Overdue Detection
                 const now = new Date();
@@ -1017,12 +1123,12 @@ useEffect(() => {
 
                 return (
                   <tr key={notif.id || notif._id} className="hover:bg-gray-200 text-left">
+                    <td className="py-2 px-4">{notif.user?.name || "N/A"}</td>
                     <td className="py-2 px-4">{notif.title}</td>
                     <td className="py-2 px-4">{notif.details}</td>
                     <td className="py-2 px-4">{notif.location}</td>
                     <td className="py-2 px-4">{notif.address}</td>
                     <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
-                    {/* <td className="py-2 px-4">{notif.voucher?.amount || "N/A"}</td> */}
                     <td className="py-2 px-4">{notif.estimatedCost}</td>
                     <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
                     <td className="py-2 px-4">
@@ -1121,18 +1227,23 @@ useEffect(() => {
 {activeSection === "Reports" && (
   <section className="p-6 bg-gray-50 rounded-lg shadow-md">
     <header className="mb-6">
-      <h3 className="text-2xl font-extrabold text-orangee mb-2">
-        Reports
-      </h3>
+      <h3 className="text-2xl font-extrabold text-Brown mb-2">Reports</h3>
       <p className="text-sm text-gray-600">
         Analyze and generate detailed reports to gain insights into your business performance.
       </p>
     </header>
 
+    {/* 🔹 FILTER SECTION */}
     <div className="bg-white p-6 rounded-lg shadow-md mb-8">
       <div className="flex justify-between items-center mb-4">
-        <h4 className="text-lg font-bold text-green">Filters</h4>
-        <button className="text-blue-500 text-green text-sm hover:underline">
+        <h4 className="text-lg font-bold text-Brown">Filters</h4>
+        <button
+          onClick={() => {
+            setFilters({ type: "", startDate: "", endDate: "", sortBy: "date" });
+            fetchReports();
+          }}
+          className="text-red-500 text-sm hover:underline"
+        >
           Reset Filters
         </button>
       </div>
@@ -1141,11 +1252,17 @@ useEffect(() => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Report Type
           </label>
-          <select className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-            <option value="">Select...</option>
-            <option value="sales">Agents</option>
-            <option value="inventory">Users</option>
-            <option value="performance">Errands</option>
+          <select
+            name="type"
+            value={filters.type}
+            onChange={handleFilterChange}
+            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+          >
+            <option value="">Select Report Type</option>
+            <option value="agents">Agents</option>
+            <option value="users">Users</option>
+            <option value="errands">Errands</option>
+            <option value="payments">Payments</option>
           </select>
         </div>
         <div>
@@ -1155,11 +1272,17 @@ useEffect(() => {
           <div className="flex space-x-2">
             <input
               type="date"
-              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              name="startDate"
+              value={filters.startDate}
+              onChange={handleFilterChange}
+              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
             />
             <input
               type="date"
-              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              name="endDate"
+              value={filters.endDate}
+              onChange={handleFilterChange}
+              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
             />
           </div>
         </div>
@@ -1167,113 +1290,136 @@ useEffect(() => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Sort By
           </label>
-          <select className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-            <option value="date">Date</option>
-            <option value="amount">Amount</option>
-            <option value="category">Category</option>
+          <select
+            name="sortBy"
+            value={filters.sortBy}
+            onChange={handleFilterChange}
+            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+          >
+            <option value="date">Date Created</option>
+            <option value="amount">Amount / Cost</option>
+            <option value="status">Status</option>
           </select>
         </div>
       </div>
       <div className="mt-4">
-        <button className="px-6 py-2 bg-blue text-white rounded-lg shadow-md hover:bg-blue-700">
-          Apply Filters
+        <button
+          onClick={fetchReports}
+          className="px-6 py-2 bg-blue-600 text-Brown rounded-lg shadow-md hover:bg-blue-700 transition"
+        >
+          {reportLoading ? "Loading..." : "Apply Filters"}
         </button>
       </div>
     </div>
 
+    {/* 🔹 DATA TABLE */}
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h4 className="text-lg font-bold text-green">Generated Reports</h4>
-        <button className="px-4 py-2 bg-green text-white rounded-lg shadow-md hover:bg-green-700">
-          Generate New Report
-        </button>
+        <h4 className="text-lg font-bold text-Brown">Generated Reports Data</h4>
+<button
+  onClick={handleExportExcel}
+  className="px-4 py-2 bg-green-600 text-Brown rounded-lg shadow-md hover:bg-green-700"
+>
+  Export Data
+</button>
+
       </div>
-      <div className="overflow-auto">
+      <div className="overflow-auto max-h-96">
         <table className="min-w-full border-collapse border border-gray-200">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-100 sticky top-0">
             <tr>
-              <th className="text-left px-4 py-2 font-semibold text-green border-b border-gray-200">
-                Report Name
+              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+                Name / Title
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-green border-b border-gray-200">
-                Type
+              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+                Category
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-green border-b border-gray-200">
-                Date Generated
+              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+                Details (Email/Cost)
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-green border-b border-gray-200">
-                Actions
+              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+                Date
+              </th>
+              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+                Status
               </th>
             </tr>
           </thead>
           <tbody>
-
-            <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Monthly Sales Report
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Sales
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Dec 2024
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                <button className="text-blue-600 hover:underline">
-                  View
-                </button>{" "}
-                |{" "}
-                <button className="text-red-600 hover:underline">
-                  Delete
-                </button>
-              </td>
-            </tr>
-            <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Yearly Inventory Report
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Inventory
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                Dec 2024
-              </td>
-              <td className="px-4 py-2 text-gray-700 border-b border-gray-200">
-                <button className="text-blue-600 hover:underline">
-                  View
-                </button>{" "}
-                |{" "}
-                <button className="text-red-600 hover:underline">
-                  Delete
-                </button>
-              </td>
-            </tr>
+            {reportLoading ? (
+              <tr>
+                <td colSpan="5" className="text-center py-6 text-gray-500">Loading data...</td>
+              </tr>
+            ) : reportData.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="text-center py-6 text-gray-500">No reports found for selected filters.</td>
+              </tr>
+            ) : (
+              reportData.map((item, index) => (
+                <tr key={index} className="hover:bg-gray-100 text-sm text-left">
+                  {/* Name */}
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 font-medium">
+                    {item.title}
+                  </td>
+                  
+                  {/* Category */}
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 capitalize">
+                    {item.role}
+                  </td>
+                  
+                  {/* Cost or Email */}
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200">
+                    {item.estimatedCost > 0 
+                      ? `₦${item.estimatedCost.toLocaleString()}` 
+                      : item.email}
+                  </td>
+                  
+                  {/* Date */}
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </td>
+                  
+                  {/* Status Badge */}
+                  <td className="px-4 py-3 border-b border-gray-200">
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      item.status === 'success' || item.status === 'completed' || item.status === 'active' 
+                        ? 'bg-green text-green-700' 
+                        : item.status === 'failed' || item.status === 'overdue'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
     </div>
 
+    {/* 🔹 ANALYTICS CARDS */}
     <div className="mt-8">
-      <h4 className="text-lg font-bold text-green mb-4">
-        Analytics Overview
-      </h4>
+      <h4 className="text-lg font-bold text-Brown mb-4">Analytics Overview</h4>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-4 bg-white rounded-lg shadow-md">
-          <h5 className="text-sm text-gray-600">Total Reports</h5>
-          <p className="text-2xl font-bold text-gray-800">45</p>
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-blue-500">
+          <h5 className="text-sm text-gray-600">Total Records</h5>
+          <p className="text-2xl font-bold text-gray-800">{reportStats.total}</p>
         </div>
-        <div className="p-4 bg-white rounded-lg shadow-md">
-          <h5 className="text-sm text-gray-600">Reports Generated This Month</h5>
-          <p className="text-2xl font-bold text-gray-800">12</p>
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-green-500">
+          <h5 className="text-sm text-gray-600">New This Month</h5>
+          <p className="text-2xl font-bold text-gray-800">{reportStats.monthly}</p>
         </div>
-        <div className="p-4 bg-white rounded-lg shadow-md">
-          <h5 className="text-sm text-gray-600">Pending Reports</h5>
-          <p className="text-2xl font-bold text-gray-800">3</p>
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-yellow-500">
+          <h5 className="text-sm text-gray-600">Pending / Active</h5>
+          <p className="text-2xl font-bold text-gray-800">{reportStats.pending}</p>
         </div>
       </div>
     </div>
   </section>
 )}
+
 
 {activeSection === "Settings" && (
   <section className="p-6 bg-white rounded-lg shadow-md">
