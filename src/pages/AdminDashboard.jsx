@@ -228,11 +228,12 @@ const chartOptions = {
       });
 
       // Show success message
-      setSuccessMessage("Agent created successfully! Redirecting...");
+      setSuccessMessage("Agent created successfully!");
       
       // Redirect after 2 seconds
-      setTimeout(() => navigate("/AdminDashboard"), 2000); 
-
+  setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
     } catch (error) {
       console.error("Signup Error:", error.message);
       setErrors({ apiError: error.message });
@@ -299,15 +300,94 @@ const chartOptions = {
   const totalAgentPages = Math.ceil(agents.length / agentsPerPage);
 
     // Handlers
-  const handleAgentEdit = (agent) => {
-    console.log("Edit", agent);
-    // implement edit logic
-  };
+const [isEditOpen, setIsEditOpen] = useState(false);
+const [selectedAgent, setSelectedAgent] = useState(null);
+const [editForm, setEditForm] = useState({
+  name: "",
+  email: "",
+  phone: "",
+});
 
-  const handleAgentDelete = (agentId) => {
-    console.log("Delete", agentId);
-    // implement delete logic
-  };
+ const handleAgentEdit = (agent) => {
+  setSelectedAgent(agent);
+  setEditForm({
+    name: agent.name || "",
+    email: agent.email || "",
+    phone: agent.phone || "",
+  });
+  setIsEditOpen(true);
+};
+
+const handleEditChange = (e) => {
+  setEditForm({
+    ...editForm,
+    [e.target.name]: e.target.value,
+  });
+};
+
+const handleAgentUpdate = async () => {
+  try {
+    const res = await fetch(
+      `${BASEURL}/admin/users/${selectedAgent._id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setIsEditOpen(false);
+      fetchAgents(); // refresh list
+        setSuccessMessage("Agent updated successfully!");
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Update error:", error);
+  }
+};
+
+  const handleAgentDelete = async (agentId) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this agent?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    const res = await fetch(
+        `${BASEURL}/admin/users/${agentId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setSuccessMessage("Agent deleted successfully!");
+      
+      // Remove agent from state instantly (no refetch)
+      setAgents((prev) => prev.filter((agent) => agent._id !== agentId));
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Delete error:", error);
+  }
+};
+
 
     // if (isLoading) return <p>Loading agents...</p>;
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
@@ -319,15 +399,94 @@ const chartOptions = {
   const totalUserPages = Math.ceil(users.length / usersPerPage);
 
   // Handlers
-  const handleUserEdit = (user) => {
-    console.log("Edit", user);
-    // implement edit logic
-  };
+  const [isUserEditOpen, setIsUserEditOpen] = useState(false);
+const [selectedUser, setSelectedUser] = useState(null);
+const [userEditForm, setUserEditForm] = useState({
+  name: "",
+  email: "",
+  phone: "",
+});
 
-  const handleUserDelete = (userId) => {
-    console.log("Delete", userId);
-    // implement delete logic
-  };
+ const handleUserEdit = (user) => {
+  setSelectedUser(user);
+  setUserEditForm({
+    name: user.name || "",
+    email: user.email || "",
+    phone: user.phone || "",
+  });
+  setIsUserEditOpen(true);
+};
+
+const handleUserEditChange = (e) => {
+  setUserEditForm({
+    ...userEditForm,
+    [e.target.name]: e.target.value,
+  });
+};
+
+const handleUserUpdate = async () => {
+  try {
+    const res = await fetch(
+      `${BASEURL}/admin/users/${selectedUser._id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userEditForm),
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setIsUserEditOpen(false);
+      fetchUsers(); // refresh users list
+        setSuccessMessage("User updated successfully!");
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Update error:", error);
+  }
+};
+
+
+  const handleUserDelete = async (userId) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this user?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    const res = await fetch(
+      `${BASEURL}/admin/users/${userId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setSuccessMessage("User deleted successfully!");
+
+      setUsers((prev) => prev.filter((user) => user._id !== userId));
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Delete error:", error);
+  }
+};
+
 
   // if (isLoading) return <p>Loading users...</p>;
   if (errors.fetch) return <p className="text-red-500">{errors.fetch}</p>;
@@ -475,9 +634,6 @@ const handleExportExcel = async () => {
   }
 };
 
-
-
-
     // const generatePassword = () => {
     //   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
     //   return Array(10)
@@ -517,7 +673,6 @@ const handleExportExcel = async () => {
 // };
 
 
-
   const handleLogout = () => navigate("/login");
 
 
@@ -530,7 +685,7 @@ const handleExportExcel = async () => {
           <p className="text-sm text-Soft-beige mt-1">Welcome back!</p>
         </div>
         <nav className="flex-grow p-4">
-          {["Overview", "Create Agent", "Agents", "Users", "Services", "Errands", "Reports", "Settings"].map(
+          {["Overview", "Create Agent", "Agents", "Users", "Services", "Errands", "Reports"].map(
             (section) => (
               <button
                 key={section}
@@ -577,426 +732,577 @@ const handleExportExcel = async () => {
           </div>
         </header>
 
-        {activeSection === "Overview" && (
-          <section>
-      {/* Quick Stats */}
-      <h3 className="text-lg font-bold text-Brown mb-4">Quick Statistics</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          <div className="col-span-full flex justify-center items-center py-10">
-            <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+       {activeSection === "Overview" && (
+  <section className="w-full">
+    {/* Quick Stats */}
+    <h3 className="text-lg font-bold text-Brown mb-4">Quick Statistics</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {isLoading ? (
+        <div className="col-span-full flex justify-center items-center py-10">
+          <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
+          >
+            <h4 className="text-sm text-Elegant-Gold font-bold">{stat.label}</h4>
+            <p className="text-2xl font-bold text-Brown mt-2">{stat.value}</p>
           </div>
-        ) : (
-          stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
-            >
-              <h4 className="text-sm text-Elegant-Gold font-bold">{stat.label}</h4>
-              <p className="text-2xl font-bold text-Brown mt-2">{stat.value}</p>
-            </div>
-          ))
+        ))
+      )}
+    </div>
+
+    {/* Monthly Revenue Chart */}
+    <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Monthly Revenue</h3>
+    {monthlyRevenue.length > 0 ? (
+      // Added a wrapper with relative class and responsive height to ensure Chart.js fits
+      <div className="w-full relative h-[300px] md:h-auto">
+        <Bar data={chartData} options={chartOptions} />
+      </div>
+    ) : (
+      <p className="text-center text-Brown py-4">Revenue is data loading....</p>
+    )}
+
+    {/* Recent Activities */}
+    <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Recent Activities</h3>
+    <ul className="bg-gray-200 p-4 rounded-lg shadow-md">
+      {isLoading ? (
+        <li className="flex justify-center items-center py-6">
+          <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+        </li>
+      ) : recentActivities.length === 0 ? (
+        <li className="text-center text-Brown py-4">
+          No recent activities found.
+        </li>
+      ) : (
+        recentActivities.map((activity, index) => (
+          <li
+            key={index}
+            // UPDATED: Stack vertically on mobile (flex-col), horizontally on tablet (sm:flex-row)
+            className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-2 border-b last:border-b-0 gap-1 sm:gap-0"
+          >
+            {/* UPDATED: Responsive text size */}
+            <span className="text-sm sm:text-base md:text-lg text-Brown font-medium">
+              {activity.description}
+            </span>
+
+            {/* UPDATED: Responsive text size and color/opacity for hierarchy on mobile */}
+            <span className="text-xs sm:text-base md:text-lg text-Brown/80 sm:text-Brown">
+              {new Date(activity.timestamp).toLocaleString("en-NG", {
+                weekday: "short",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true,
+              })}
+            </span>
+          </li>
+        ))
+      )}
+    </ul>
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      // UPDATED: Added flex-wrap and gap to handle small screens safely
+      <div className="flex flex-wrap justify-center mt-4 gap-2">
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((prev) => prev - 1)}
+          className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base"
+        >
+          Prev
+        </button>
+        <span className="px-4 py-2 text-sm sm:text-base flex items-center">{`Page ${page} of ${totalPages}`}</span>
+        <button
+          disabled={page === totalPages}
+          onClick={() => setPage((prev) => prev + 1)}
+          className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base"
+        >
+          Next
+        </button>
+      </div>
+    )}
+  </section>
+)}
+
+{activeSection === "Create Agent" && formData && (
+  <section className="w-full max-w-2xl mx-auto bg-Ivory p-4 sm:p-6 md:p-8 rounded-lg shadow-lg">
+    <h2 className="text-2xl sm:text-3xl font-bold text-Brown mb-4 sm:mb-6 text-center">
+      Agent Registration
+    </h2>
+    
+    {errors.apiError && (
+      <p className="text-red-500 text-sm text-center">{errors.apiError}</p>
+    )}
+    
+    {successMessage && (
+      <div className="mb-4 bg-green border border-green-400 text-green-700 px-4 py-3 rounded relative text-center">
+        <strong className="font-bold">Success!</strong>
+        <span className="block sm:inline"> {successMessage}</span>
+      </div>
+    )}
+
+    <form className="mt-4 sm:mt-6 space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+      <div>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          className="block w-full px-3 py-2 sm:py-3 border rounded-md text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none transition duration-150"
+          placeholder="Full Name"
+        />
+        {errors.name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.name}</p>}
+      </div>
+
+      <div>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          className="block w-full px-3 py-2 sm:py-3 border rounded-md text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none transition duration-150"
+          placeholder="Email Address"
+        />
+        {errors.email && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.email}</p>}
+      </div>
+
+      <div>
+        <input
+          id="phone"
+          name="phone"
+          type="text"
+          value={formData.phone}
+          onChange={handleChange}
+          required
+          className="block w-full px-3 py-2 sm:py-3 border rounded-md text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none transition duration-150"
+          placeholder="Phone Number"
+        />
+        {errors.phone && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.phone}</p>}
+      </div>
+
+      <div>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          className="block w-full px-3 py-2 sm:py-3 border rounded-md text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none transition duration-150"
+          placeholder="Password"
+        />
+        {errors.password && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.password}</p>}
+      </div>
+
+      <div>
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+          className="block w-full px-3 py-2 sm:py-3 border rounded-md text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none transition duration-150"
+          placeholder="Confirm Password"
+        />
+        {errors.confirmPassword && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.confirmPassword}</p>
         )}
       </div>
 
-      {/* Monthly Revenue Chart */}
-      <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Monthly Revenue</h3>
-     {monthlyRevenue.length > 0 ? (
-  <Bar data={chartData} options={chartOptions} />
-) : (
-  <p className="text-center text-Brown py-4">
-    Revenue is data loading....
-  </p>
-)}
+      <input type="hidden" value={formData.role} name="role" />
 
+      {/* <div className="flex items-center">
+        <input
+          id="terms"
+          name="terms"
+          type="checkbox"
+          checked={formData.terms}
+          onChange={handleChange}
+          className="h-4 w-4 text-blue-600"
+          required
+        />
+        <label htmlFor="terms" className="ml-2 text-sm text-Brown font-bold">
+          I agree to the terms and conditions
+        </label>
+      </div> */}
+      {errors.terms && <p className="text-red-500 text-sm mt-1">{errors.terms}</p>}
 
-      {/* Recent Activities */}
-      <h3 className="text-lg font-bold text-Brown mt-8 mb-4">Recent Activities</h3>
-  <ul className="bg-gray-200 p-4 rounded-lg shadow-md">
-  {isLoading ? (
-    <li className="flex justify-center items-center py-6">
-      <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
-    </li>
-  ) : recentActivities.length === 0 ? (
-    <li className="text-center text-Brown py-4">
-      No recent activities found.
-    </li>
-  ) : (
-    recentActivities.map((activity, index) => (
-      <li
-        key={index}
-        className="flex justify-between items-center py-2 border-b last:border-b-0"
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-Brown text-white px-6 py-3 rounded-md font-semibold shadow-md hover:bg-Brown transition duration-200 text-sm sm:text-base"
       >
-        <span className="text-lg text-Brown">
-          {activity.description}
-        </span>
-
-        <span className="text-lg text-Brown">
-          {new Date(activity.timestamp).toLocaleString("en-NG", {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-          })}
-        </span>
-      </li>
-    ))
-  )}
-</ul>
-
-
-      {/* Pagination */}
-{totalPages > 1 && (
-  <div className="flex justify-center mt-4 space-x-2">
-    <button
-      disabled={page === 1}
-      onClick={() => setPage((prev) => prev - 1)}
-      className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
-    >
-      Prev
-    </button>
-    <span className="px-4 py-2">{`Page ${page} of ${totalPages}`}</span>
-    <button
-      disabled={page === totalPages}
-      onClick={() => setPage((prev) => prev + 1)}
-      className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
-    >
-      Next
-    </button>
-  </div>
-)}
-
-    </section>
-        )}
-
-{activeSection === "Create Agent" && formData && (
-  <section className="max-w-2xl mx-auto bg-Ivory p-8 rounded-lg shadow-lg">
-  <h2 className="text-3xl font-bold text-Brown mb-6 text-center">
-    Agent Registration
-  </h2>
-     {errors.apiError && <p className="text-red-500 text-sm text-center">{errors.apiError}</p>}
-{successMessage && (
-  <div className="mb-4 bg-green border border-green-400 text-green-700 px-4 py-3 rounded relative text-center">
-    <strong className="font-bold">Success!</strong>
-    <span className="block sm:inline"> {successMessage}</span>
-  </div>
-)}
-        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="block w-full px-3 py-2 border rounded-md"
-              placeholder="Full Name"
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-          </div>
-
-          <div>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="block w-full px-3 py-2 border rounded-md"
-              placeholder="Email Address"
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
-
-          <div>
-            <input
-              id="phone"
-              name="phone"
-              type="text"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              className="block w-full px-3 py-2 border rounded-md"
-              placeholder="Phone Number"
-            />
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-
-          </div>
-
-          <div>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="block w-full px-3 py-2 border rounded-md"
-              placeholder="Password"
-            />
-            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-          </div>
-
-          <div>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              className="block w-full px-3 py-2 border rounded-md"
-              placeholder="Confirm Password"
-            />
-            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
-          </div>
-
-          <input type="hidden" value={formData.role} name="role" />
-
-          {/* <div className="flex items-center">
-            <input
-              id="terms"
-              name="terms"
-              type="checkbox"
-              checked={formData.terms}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600"
-              required
-            />
-            <label htmlFor="terms" className="ml-2 text-sm text-Brown font-bold">
-              I agree to the terms and conditions
-            </label>
-          </div> */}
-          {errors.terms && <p className="text-red-500 text-sm mt-1">{errors.terms}</p>}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-Brown text-white px-6 py-3 rounded-md font-semibold shadow-md hover:bg-Brown"
-          >
-            {isSubmitting ? "Creating..." : "Create Agent"}
-          </button>
-        </form>
-</section>
+        {isSubmitting ? "Creating..." : "Create Agent"}
+      </button>
+    </form>
+  </section>
 )}
 
 {activeSection === "Agents" && (
+  <section className="w-full max-w-7xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-3 sm:p-4 md:p-6 relative">
+    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-Brown mb-4 md:mb-6 text-center">
+      Registered Agents
+    </h2>
 
-   <section className="max-w-8xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-4 md:p-6">
-      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
-        Registered Agents
-      </h2>
-
-      {isLoading ? (
-        <p className="text-center">Loading agents...</p>
-      ) : errors.fetch ? (
-        <p className="text-center text-red-500">{errors.fetch}</p>
-      ) : (
-        <>
-          <div className="overflow-hidden">
-            <table className="w-full bg-gray-100 border border-gray-300 rounded-lg">
-              <thead>
-                <tr className="bg-gray-50 text-gray-700 text-sm md:text-base">
-                  <th className="py-2 px-3 md:px-4 border">Name</th>
-                  <th className="py-2 px-3 md:px-4 border">Email</th>
-                  <th className="py-2 px-3 md:px-4 border">Phone</th>
-                  <th className="py-2 px-3 md:px-4 border">Actions</th>
+    {isLoading ? (
+      <p className="text-center py-4">Loading agents...</p>
+    ) : errors.fetch ? (
+      <p className="text-center text-red-500 py-4">{errors.fetch}</p>
+    ) : (
+      <>
+        {/* Added overflow-x-auto to make table scrollable on mobile */}
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-300">
+          <table className="w-full bg-gray-100 min-w-[600px]">
+            <thead>
+              <tr className="bg-gray-50 text-gray-700 text-xs sm:text-sm md:text-base">
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-left">Name</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-left">Email</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-center">Phone</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentAgents.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-4 text-sm">
+                    No agents found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {currentAgents.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-4">
-                      No agents found.
+              ) : (
+                currentAgents.map((agent) => (
+                  <tr key={agent._id} className="border text-left text-xs sm:text-sm hover:bg-white transition-colors">
+                    <td className="py-2 px-2 sm:px-3 md:px-4 whitespace-nowrap">{agent.name}</td>
+                    <td className="py-2 px-2 sm:px-3 md:px-4 whitespace-nowrap">{agent.email}</td>
+                    <td className="py-2 px-2 sm:px-3 md:px-4 text-center whitespace-nowrap">{agent.phone}</td>
+                    <td className="py-2 px-2 sm:px-4">
+                      {/* Stack buttons on very small screens, row on larger */}
+                      <div className="flex flex-col sm:flex-row justify-center items-center gap-2">
+                        <button
+                          onClick={() => handleAgentEdit(agent)}
+                          className="w-full sm:w-auto bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-700 transition text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleAgentDelete(agent._id)}
+                          className="w-full sm:w-auto bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  currentAgents.map((agent) => (
-                    <tr key={agent._id} className="border text-center text-sm">
-                      <td className="py-2 px-3 md:px-4">{agent.name}</td>
-                      <td className="py-2 px-3 md:px-4">{agent.email}</td>
-                      <td className="py-2 px-3 md:px-4">{agent.phone}</td>
-                      <td className="py-2 px-4">
-                        <div className="flex justify-center space-x-2">
-                          <button
-                            onClick={() => handleAgentEdit(agent)}
-                            className="bg-gray-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 transition text-xs md:text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleAgentDelete(agent._id)}
-                            className="bg-red-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-red-600 transition text-xs md:text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalAgentPages > 1 && (
+          <div className="flex flex-wrap justify-center items-center mt-4 gap-2 sm:gap-4">
+            <button
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Previous
+            </button>
+
+            <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+              Page {currentPage} of {totalAgentPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              disabled={currentPage === totalAgentPages}
+              className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </>
+    )}
+
+    {/* ✅ SUCCESS POPUP */}
+    {successMessage && (
+      // Adjusted to be safe on mobile (max-width)
+      <div className="fixed top-5 left-4 right-4 sm:left-auto sm:right-5 sm:w-auto bg-green text-white px-4 py-3 sm:px-6 sm:py-3 rounded-lg shadow-lg z-50 transition-all duration-300 text-center sm:text-left text-sm sm:text-base">
+        {successMessage}
+      </div>
+    )}
+
+    {/* ✅ EDIT MODAL INSIDE SECTION */}
+    {isEditOpen && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        {/* Changed width to percentage on mobile, fixed on desktop */}
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-sm sm:w-96 p-6 overflow-y-auto max-h-[90vh]">
+          <h3 className="text-lg sm:text-xl text-Brown font-bold mb-4 text-center">
+            Edit Agent
+          </h3>
+
+          <div className="space-y-3">
+            <input
+              type="text"
+              name="name"
+              value={editForm.name}
+              onChange={handleEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Name"
+            />
+
+            <input
+              type="email"
+              name="email"
+              value={editForm.email}
+              onChange={handleEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Email"
+            />
+
+            <input
+              type="text"
+              name="phone"
+              value={editForm.phone}
+              onChange={handleEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Phone"
+            />
           </div>
 
-          {/* Pagination Controls */}
-          {totalAgentPages > 1 && (
-            <div className="flex justify-center items-center mt-4 space-x-4">
-              <button
-                onClick={() => setCurrentPage((prev) => prev - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setIsEditOpen(false)}
+              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm sm:text-base"
+            >
+              Cancel
+            </button>
 
-              <span className="text-sm font-medium">
-                Page {currentPage} of {totalAgentPages}
-              </span>
-
-              <button
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-                disabled={currentPage === totalAgentPages}
-                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </section>
-        
-        )}
+            <button
+              onClick={handleAgentUpdate}
+              className="px-4 py-2 bg-Elegant-Gold text-white rounded hover:bg-blue-700 text-sm sm:text-base"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </section>
+)}
 
 {activeSection === "Users" && (
+  <section className="w-full max-w-7xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-3 sm:p-4 md:p-6 relative">
+    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-Brown mb-4 md:mb-6 text-center">
+      Registered Users
+    </h2>
 
-   <section className="max-w-8xl mx-auto bg-Soft-beige rounded-lg shadow-lg p-4 md:p-6">
-      <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
-        Registered Users
-      </h2>
-
-      {isLoading ? (
-        <p className="text-center">Loading users...</p>
-      ) : errors.fetch ? (
-        <p className="text-center text-red-500">{errors.fetch}</p>
-      ) : (
-        <>
-          <div className="overflow-hidden">
-            <table className="w-full bg-gray-100 border border-gray-300 rounded-lg">
-              <thead>
-                <tr className="bg-gray-50 text-gray-700 text-sm md:text-base">
-                  <th className="py-2 px-3 md:px-4 border">Name</th>
-                  <th className="py-2 px-3 md:px-4 border">Email</th>
-                  <th className="py-2 px-3 md:px-4 border">Phone</th>
-                  <th className="py-2 px-3 md:px-4 border">Actions</th>
+    {isLoading ? (
+      <p className="text-center py-4">Loading users...</p>
+    ) : errors.fetch ? (
+      <p className="text-center text-red-500 py-4">{errors.fetch}</p>
+    ) : (
+      <>
+        {/* Added overflow-x-auto to handle table width on mobile */}
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-300">
+          <table className="w-full bg-gray-100 min-w-[600px]">
+            <thead>
+              <tr className="bg-gray-50 text-gray-700 text-xs sm:text-sm md:text-base">
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-left">Name</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-left">Email</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-center">Phone</th>
+                <th className="py-2 px-2 sm:px-3 md:px-4 border text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-4 text-sm">
+                    No users found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {currentUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-4">
-                      No users found.
+              ) : (
+                currentUsers.map((user) => (
+                  <tr key={user._id} className="border text-left text-xs sm:text-sm hover:bg-white transition-colors">
+                    <td className="py-2 px-2 sm:px-3 md:px-4 whitespace-nowrap">{user.name}</td>
+                    <td className="py-2 px-2 sm:px-3 md:px-4 whitespace-nowrap">{user.email}</td>
+                    <td className="py-2 px-2 sm:px-3 md:px-4 text-center whitespace-nowrap">{user.phone}</td>
+                    <td className="py-2 px-2 sm:px-4">
+                      {/* Stack buttons vertically on small screens, horizontal on larger */}
+                      <div className="flex flex-col sm:flex-row justify-center items-center gap-2">
+                        <button
+                          onClick={() => handleUserEdit(user)}
+                          className="w-full sm:w-auto bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-700 transition text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleUserDelete(user._id)}
+                          className="w-full sm:w-auto bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  currentUsers.map((user) => (
-                    <tr key={user._id} className="border text-center text-sm">
-                      <td className="py-2 px-3 md:px-4">{user.name}</td>
-                      <td className="py-2 px-3 md:px-4">{user.email}</td>
-                      <td className="py-2 px-3 md:px-4">{user.phone}</td>
-                      <td className="py-2 px-4">
-                        <div className="flex justify-center space-x-2">
-                          <button
-                            onClick={() => handleUserEdit(user)}
-                            className="bg-gray-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-gray-700 transition text-xs md:text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleUserDelete(user._id)}
-                            className="bg-red-500 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-red-600 transition text-xs md:text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalUserPages > 1 && (
+          <div className="flex flex-wrap justify-center items-center mt-4 gap-2 sm:gap-4">
+            <button
+              onClick={() => setUserCurrentPage((prev) => prev - 1)}
+              disabled={userCurrentPage === 1}
+              className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Previous
+            </button>
+
+            <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+              Page {userCurrentPage} of {totalUserPages}
+            </span>
+
+            <button
+              onClick={() => setUserCurrentPage((prev) => prev + 1)}
+              disabled={userCurrentPage === totalUserPages}
+              className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50 text-xs sm:text-sm"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </>
+    )}
+
+    {/* ✅ SUCCESS POPUP */}
+    {successMessage && (
+      // Responsive positioning: full width/centered on mobile, top-right on desktop
+      <div className="fixed top-5 left-4 right-4 sm:left-auto sm:right-5 sm:w-auto bg-green text-white px-4 py-3 sm:px-6 sm:py-3 rounded-lg shadow-lg z-50 transition-all duration-300 text-center sm:text-left text-sm sm:text-base">
+        {successMessage}
+      </div>
+    )}
+
+    {/* ✅ USER EDIT MODAL */}
+    {isUserEditOpen && (
+      // Changed to fixed inset-0 to ensure it covers screen correctly on mobile scrolling
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        {/* Responsive width: 100% on mobile (max-sm), fixed width on tablet/desktop */}
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-sm sm:w-96 p-6 overflow-y-auto max-h-[90vh]">
+          <h3 className="text-lg sm:text-xl text-Brown font-bold mb-4 text-center">
+            Edit User
+          </h3>
+
+          <div className="space-y-3">
+            <input
+              type="text"
+              name="name"
+              value={userEditForm.name}
+              onChange={handleUserEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Name"
+            />
+
+            <input
+              type="email"
+              name="email"
+              value={userEditForm.email}
+              onChange={handleUserEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Email"
+            />
+
+            <input
+              type="text"
+              name="phone"
+              value={userEditForm.phone}
+              onChange={handleUserEditChange}
+              className="w-full border p-2 rounded text-sm sm:text-base focus:ring-Brown focus:border-Brown outline-none"
+              placeholder="Phone"
+            />
           </div>
 
-          {/* Pagination Controls */}
-          {totalUserPages > 1 && (
-            <div className="flex justify-center items-center mt-4 space-x-4">
-              <button
-                onClick={() => setUserCurrentPage((prev) => prev - 1)}
-                disabled={userCurrentPage === 1}
-                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setIsUserEditOpen(false)}
+              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm sm:text-base"
+            >
+              Cancel
+            </button>
 
-              <span className="text-sm font-medium">
-                Page {userCurrentPage} of {totalUserPages}
-              </span>
-
-              <button
-                onClick={() => setUserCurrentPage((prev) => prev + 1)}
-                disabled={userCurrentPage === totalUserPages}
-                className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </section>
-        
-        )}
+            <button
+              onClick={handleUserUpdate}
+              className="px-4 py-2 bg-Elegant-Gold text-white rounded hover:bg-blue-700 text-sm sm:text-base"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </section>
+)}
 
 {activeSection === "Services" && (
-  <section>
-    <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+  <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-6">
+    <h2 className="text-2xl sm:text-3xl font-bold text-Brown mb-6 text-center">
       Service Analytics
     </h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {services.map((service) => (
         <div
           key={service.name}
-          className="bg-gray-200 p-6 rounded-lg shadow-md hover:shadow-lg transition"
+          className="bg-gray-100 p-4 sm:p-6 rounded-lg shadow-md hover:shadow-lg transition flex flex-col justify-between"
         >
-          <h4 className="text-lg font-bold text-Elegant-Gold">{service.name}</h4>
+          <h4 className="text-base sm:text-lg font-bold text-Elegant-Gold mb-3 border-b border-gray-300 pb-2">
+            {service.name}
+          </h4>
 
-          <p className="text-lg mt-2 text-Brown">
-            Pending:{" "}
-            <span className="font-bold text-Brown">{service.pending || 0}</span>
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm sm:text-base text-Brown flex justify-between items-center">
+              Pending:{" "}
+              <span className="font-bold text-Brown bg-white px-2 py-0.5 rounded shadow-sm">
+                {service.pending || 0}
+              </span>
+            </p>
 
-          <p className="text-lg mt-2 text-Brown">
-            In Progress:{" "}
-            <span className="font-bold text-yellow-500">{service.inProgress || 0}</span>
-          </p>
+            <p className="text-sm sm:text-base text-Brown flex justify-between items-center">
+              In Progress:{" "}
+              <span className="font-bold text-yellow-600 bg-white px-2 py-0.5 rounded shadow-sm">
+                {service.inProgress || 0}
+              </span>
+            </p>
 
-          <p className="text-lg text-Brown">
-            Completed:{" "}
-            <span className="font-bold text-green">{service.completed || 0}</span>
-          </p>
+            <p className="text-sm sm:text-base text-Brown flex justify-between items-center">
+              Completed:{" "}
+              <span className="font-bold text-green bg-white px-2 py-0.5 rounded shadow-sm">
+                {service.completed || 0}
+              </span>
+            </p>
 
-          <p className="text-lg text-Brown">
-            Overdue:{" "}
-            <span className="font-bold text-red-500">{service.overdue || 0}</span>
-          </p>
+            <p className="text-sm sm:text-base text-Brown flex justify-between items-center">
+              Overdue:{" "}
+              <span className="font-bold text-red-500 bg-white px-2 py-0.5 rounded shadow-sm">
+                {service.overdue || 0}
+              </span>
+            </p>
+          </div>
         </div>
       ))}
     </div>
@@ -1004,20 +1310,20 @@ const handleExportExcel = async () => {
 )}
 
 {activeSection === "Errands" && (
-  <section>
-    <h2 className="text-lg md:text-3xl font-bold text-Brown mb-6 text-center">
+  <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 pb-6">
+    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-Brown mb-6 text-center">
       Errands
     </h2>
 
     {/* Tabs */}
-    <div className="flex flex-wrap gap-2 mb-4 justify-start">
+    <div className="flex flex-wrap gap-2 mb-4 justify-center sm:justify-start">
       {["Pending", "In Progress", "Over Due", "Completed"].map((tab) => (
         <button
           key={tab}
           onClick={() => setActiveMessageTab(tab)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
             activeMessageTab === tab
-              ? "bg-Brown text-white"
+              ? "bg-Brown text-white shadow"
               : "bg-Elegant-Gold text-white hover:bg-orange-200"
           }`}
         >
@@ -1027,25 +1333,25 @@ const handleExportExcel = async () => {
     </div>
 
     {/* Search / Filters */}
-    <div className="flex flex-wrap gap-4 mb-4 items-center">
-        <input
-    type="text"
-    placeholder="Search by User"
-    className="px-3 py-2 rounded border border-gray-300 w-48"
-    value={searchUser}
-    onChange={(e) => setSearchUser(e.target.value)}
-  />
+    <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-6 items-stretch sm:items-center">
+      <input
+        type="text"
+        placeholder="Search by User"
+        className="px-3 py-2 rounded border border-gray-300 w-full sm:w-48 text-sm focus:ring-Brown focus:border-Brown outline-none"
+        value={searchUser}
+        onChange={(e) => setSearchUser(e.target.value)}
+      />
       <input
         type="text"
         placeholder="Search by Service"
-        className="px-3 py-2 rounded border border-gray-300 w-48"
+        className="px-3 py-2 rounded border border-gray-300 w-full sm:w-48 text-sm focus:ring-Brown focus:border-Brown outline-none"
         value={searchService}
         onChange={(e) => setSearchService(e.target.value)}
       />
       <input
         type="text"
         placeholder="Search by Location"
-        className="px-3 py-2 rounded border border-gray-300 w-48"
+        className="px-3 py-2 rounded border border-gray-300 w-full sm:w-48 text-sm focus:ring-Brown focus:border-Brown outline-none"
         value={searchLocation}
         onChange={(e) => setSearchLocation(e.target.value)}
       />
@@ -1053,48 +1359,48 @@ const handleExportExcel = async () => {
 
     {/* Success Message */}
     {successMessage && (
-      <div className="fixed top-5 right-5 z-50 bg-green text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
+      <div className="fixed top-5 left-4 right-4 sm:left-auto sm:right-5 sm:w-auto z-50 bg-green text-white px-4 py-3 sm:px-6 sm:py-3 rounded-lg shadow-lg animate-bounce text-center text-sm sm:text-base">
         {successMessage}
       </div>
     )}
 
     {/* Errands Table */}
     {filteredNotifications.length > 0 ? (
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-gray-100 rounded-lg shadow-md">
+      <div className="w-full overflow-x-auto rounded-lg shadow-md border border-gray-200">
+        {/* Added min-w-[1000px] to force horizontal scroll on mobile instead of squishing columns */}
+        <table className="min-w-[1000px] w-full bg-gray-100">
           <thead>
-            <tr className="bg-gray-200 text-left text-Brown">
-              <th className="py-2 px-4">Client</th>
-              <th className="py-2 px-4">Service</th>
-              <th className="py-2 px-4">Errand</th>
-              <th className="py-2 px-4">Location</th>
-              <th className="py-2 px-4">Address</th>
-              <th className="py-2 px-4">Voucher Type</th>
-              <th className="py-2 px-4">Total Cost</th>
-              <th className="py-2 px-4">Created Date</th>
-              <th className="py-2 px-4">Due Date</th>
-              <th className="py-2 px-4">Actions</th>
+            <tr className="bg-gray-200 text-left text-Brown text-xs sm:text-sm uppercase tracking-wider">
+              <th className="py-3 px-4 font-semibold">Client</th>
+              <th className="py-3 px-4 font-semibold">Service</th>
+              <th className="py-3 px-4 font-semibold">Errand</th>
+              <th className="py-3 px-4 font-semibold">Location</th>
+              <th className="py-3 px-4 font-semibold">Address</th>
+              <th className="py-3 px-4 font-semibold">Voucher</th>
+              <th className="py-3 px-4 font-semibold">Total Cost</th>
+              <th className="py-3 px-4 font-semibold">Created Date & Time</th>
+              <th className="py-3 px-4 font-semibold">Due Date</th>
+              <th className="py-3 px-4 font-semibold text-center">Actions</th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {filteredNotifications
-             .filter((notif) => {
-  const matchService = notif.title
-    ?.toLowerCase()
-    .includes(searchService.toLowerCase());
+              .filter((notif) => {
+                const matchService = notif.title
+                  ?.toLowerCase()
+                  .includes(searchService.toLowerCase());
 
-  const matchLocation = notif.location
-    ?.toLowerCase()
-    .includes(searchLocation.toLowerCase());
+                const matchLocation = notif.location
+                  ?.toLowerCase()
+                  .includes(searchLocation.toLowerCase());
 
-  const matchUser = notif.user?.name
-    ?.toLowerCase()
-    .includes(searchUser.toLowerCase());
+                const matchUser = notif.user?.name
+                  ?.toLowerCase()
+                  .includes(searchUser.toLowerCase());
 
-  return matchService && matchLocation && matchUser;
-})
-
+                return matchService && matchLocation && matchUser;
+              })
               .map((notif) => {
                 // Automatic Overdue Detection
                 const now = new Date();
@@ -1106,90 +1412,119 @@ const handleExportExcel = async () => {
                 if (isOverdue && notif.status !== "overdue") {
                   notif.status = "overdue";
                   axios
-                    .patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, {
-                      status: "overdue",
-                    })
+                    .patch(
+                      `${BASEURL}/admin/errands/${
+                        notif.id || notif._id
+                      }/status`,
+                      {
+                        status: "overdue",
+                      }
+                    )
                     .catch(console.error);
                 }
 
                 // Show only rows matching the active tab
                 const showRow =
-                  (activeMessageTab === "Pending" && notif.status === "pending") ||
-                  (activeMessageTab === "In Progress" && notif.status === "in-progress") ||
-                  (activeMessageTab === "Over Due" && notif.status === "overdue") ||
-                  (activeMessageTab === "Completed" && notif.status === "completed");
+                  (activeMessageTab === "Pending" &&
+                    notif.status === "pending") ||
+                  (activeMessageTab === "In Progress" &&
+                    notif.status === "in-progress") ||
+                  (activeMessageTab === "Over Due" &&
+                    notif.status === "overdue") ||
+                  (activeMessageTab === "Completed" &&
+                    notif.status === "completed");
 
                 if (!showRow) return null;
 
                 return (
-                  <tr key={notif.id || notif._id} className="hover:bg-gray-200 text-left">
-                    <td className="py-2 px-4">{notif.user?.name || "N/A"}</td>
-                    <td className="py-2 px-4">{notif.title}</td>
-                    <td className="py-2 px-4">{notif.details}</td>
-                    <td className="py-2 px-4">{notif.location}</td>
-                    <td className="py-2 px-4">{notif.address}</td>
-                    <td className="py-2 px-4">{notif.voucher?.category || "N/A"}</td>
-                    <td className="py-2 px-4">{notif.estimatedCost}</td>
-                    <td className="py-2 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
-                    <td className="py-2 px-4">
+                  <tr
+                    key={notif.id || notif._id}
+                    className="hover:bg-white text-left transition-colors text-sm text-gray-700"
+                  >
+                    <td className="py-3 px-4 whitespace-nowrap font-medium">
+                      {notif.user?.name || "N/A"}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">{notif.title}</td>
+                    <td className="py-3 px-4 min-w-[200px]">{notif.details}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{notif.location}</td>
+                    <td className="py-3 px-4 min-w-[200px]">{notif.address}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {notif.voucher?.category || "N/A"}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {notif.estimatedCost}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       {notif.dueDate
                         ? new Date(notif.dueDate).toLocaleDateString()
                         : "Not Set"}
                     </td>
 
                     {/* Actions */}
-                    <td className="py-2 px-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
-                      {/* Ongoing Button */}
-                      {notif.status === "pending" && (
-                        <button
-                          className="bg-orange-300 px-3 py-1 rounded text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition"
-                          onClick={async () => {
-                            try {
-                              await axios.patch(
-                                `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
-                                { status: "in-progress" }
-                              );
-                              fetchErrands();
-                              setSuccessMessage("Errand moved to Ongoing! 🚀");
-                              setTimeout(() => setSuccessMessage(""), 3000);
-                            } catch (error) {
-                              console.error("Update failed:", error);
-                              alert("Failed to update status.");
-                            }
-                          }}
-                        >
-                          Ongoing
-                        </button>
-                      )}
+                    <td className="py-3 px-4">
+                      {/* Responsive Flex: Column on mobile, Row on Tablet/Desktop */}
+                      <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                        {/* Ongoing Button */}
+                        {notif.status === "pending" && (
+                          <button
+                            className="bg-orange-300 px-3 py-1.5 rounded text-xs sm:text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition shadow-sm whitespace-nowrap"
+                            onClick={async () => {
+                              try {
+                                await axios.patch(
+                                  `${BASEURL}/admin/errands/${
+                                    notif.id || notif._id
+                                  }/status`,
+                                  { status: "in-progress" }
+                                );
+                                fetchErrands();
+                                setSuccessMessage("Errand moved to Ongoing! 🚀");
+                                setTimeout(() => setSuccessMessage(""), 3000);
+                              } catch (error) {
+                                console.error("Update failed:", error);
+                                alert("Failed to update status.");
+                              }
+                            }}
+                          >
+                            Ongoing
+                          </button>
+                        )}
 
-                      {/* Completed Button */}
-                      {notif.status !== "completed" && (
-                        <button
-                          disabled={notif.status === "pending"}
-                          className={`px-3 py-1 rounded text-sm font-medium w-full sm:w-auto transition ${
-                            notif.status === "pending"
-                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                              : "bg-orange-300 text-white hover:bg-orange-400"
-                          }`}
-                          onClick={async () => {
-                            if (notif.status === "pending") return;
-                            try {
-                              await axios.patch(
-                                `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
-                                { status: "completed" }
-                              );
-                              fetchErrands();
-                              setSuccessMessage("Errand moved to Completed! 🎉");
-                              setTimeout(() => setSuccessMessage(""), 3000);
-                            } catch (error) {
-                              console.error("Update failed:", error);
-                              alert("Failed to update status.");
-                            }
-                          }}
-                        >
-                          Completed
-                        </button>
-                      )}
+                        {/* Completed Button */}
+                        {notif.status !== "completed" && (
+                          <button
+                            disabled={notif.status === "pending"}
+                            className={`px-3 py-1.5 rounded text-xs sm:text-sm font-medium w-full sm:w-auto transition shadow-sm whitespace-nowrap ${
+                              notif.status === "pending"
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-orange-300 text-white hover:bg-orange-400"
+                            }`}
+                            onClick={async () => {
+                              if (notif.status === "pending") return;
+                              try {
+                                await axios.patch(
+                                  `${BASEURL}/admin/errands/${
+                                    notif.id || notif._id
+                                  }/status`,
+                                  { status: "completed" }
+                                );
+                                fetchErrands();
+                                setSuccessMessage(
+                                  "Errand moved to Completed! 🎉"
+                                );
+                                setTimeout(() => setSuccessMessage(""), 3000);
+                              } catch (error) {
+                                console.error("Update failed:", error);
+                                alert("Failed to update status.");
+                              }
+                            }}
+                          >
+                            Completed
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1198,23 +1533,25 @@ const handleExportExcel = async () => {
         </table>
       </div>
     ) : (
-      <p className="text-Brown mt-4">Select tab to see errands.</p>
+      <p className="text-Brown mt-8 text-center bg-gray-100 p-4 rounded-lg">
+        No errands found for the selected tab.
+      </p>
     )}
 
     {/* Pagination */}
-    <div className="flex justify-center mt-4 space-x-2">
+    <div className="flex flex-wrap justify-center mt-6 gap-2">
       <button
-        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
         onClick={() => setPage(page - 1)}
         disabled={page === 1}
       >
         Prev
       </button>
-      <span>
+      <span className="px-2 py-2 text-sm sm:text-base flex items-center">
         Page {page} of {totalPages}
       </span>
       <button
-        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50"
+        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
         onClick={() => setPage(page + 1)}
         disabled={page === totalPages}
       >
@@ -1225,38 +1562,36 @@ const handleExportExcel = async () => {
 )}
 
 {activeSection === "Reports" && (
-  <section className="p-6 bg-gray-50 rounded-lg shadow-md">
+  <section className="p-4 sm:p-6 bg-gray-50 rounded-lg shadow-md w-full max-w-full md:max-w-7xl mx-auto">
     <header className="mb-6">
-      <h3 className="text-2xl font-extrabold text-Brown mb-2">Reports</h3>
+      <h3 className="text-xl sm:text-2xl font-extrabold text-Brown mb-2">Reports</h3>
       <p className="text-sm text-gray-600">
         Analyze and generate detailed reports to gain insights into your business performance.
       </p>
     </header>
 
     {/* 🔹 FILTER SECTION */}
-    <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="text-lg font-bold text-Brown">Filters</h4>
+    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg shadow-md mb-8 w-full overflow-x-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
+        <h4 className="text-base sm:text-lg font-bold text-Brown">Filters</h4>
         <button
           onClick={() => {
             setFilters({ type: "", startDate: "", endDate: "", sortBy: "date" });
             fetchReports();
           }}
-          className="text-red-500 text-sm hover:underline"
+          className="w-full sm:w-auto font-bold px-6 py-2 bg-blue-600 text-red-500 rounded-lg shadow-md hover:bg-blue-700 transition text-sm sm:text-base"
         >
           Reset Filters
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Report Type
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
           <select
             name="type"
             value={filters.type}
             onChange={handleFilterChange}
-            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm"
           >
             <option value="">Select Report Type</option>
             <option value="agents">Agents</option>
@@ -1266,35 +1601,31 @@ const handleExportExcel = async () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Date Range
-          </label>
-          <div className="flex space-x-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="date"
               name="startDate"
               value={filters.startDate}
               onChange={handleFilterChange}
-              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+              className="w-full sm:w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm"
             />
             <input
               type="date"
               name="endDate"
               value={filters.endDate}
               onChange={handleFilterChange}
-              className="w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+              className="w-full sm:w-1/2 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sort By
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
           <select
             name="sortBy"
             value={filters.sortBy}
             onChange={handleFilterChange}
-            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm"
           >
             <option value="date">Date Created</option>
             <option value="amount">Amount / Cost</option>
@@ -1302,10 +1633,10 @@ const handleExportExcel = async () => {
           </select>
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4 flex justify-center sm:justify-start">
         <button
           onClick={fetchReports}
-          className="px-6 py-2 bg-blue-600 text-Brown rounded-lg shadow-md hover:bg-blue-700 transition"
+          className="w-full sm:w-auto font-bold px-6 py-2 bg-blue-600 text-Brown rounded-lg shadow-md hover:bg-blue-700 transition text-sm sm:text-base"
         >
           {reportLoading ? "Loading..." : "Apply Filters"}
         </button>
@@ -1313,34 +1644,33 @@ const handleExportExcel = async () => {
     </div>
 
     {/* 🔹 DATA TABLE */}
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="text-lg font-bold text-Brown">Generated Reports Data</h4>
-<button
-  onClick={handleExportExcel}
-  className="px-4 py-2 bg-green-600 text-Brown rounded-lg shadow-md hover:bg-green-700"
->
-  Export Data
-</button>
-
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md w-full overflow-x-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-0">
+        <h4 className="text-base sm:text-lg font-bold text-Brown">Generated Reports Data</h4>
+        <button
+          onClick={handleExportExcel}
+          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-Brown rounded-lg shadow-md hover:bg-green-700 text-sm sm:text-base"
+        >
+          Export Data
+        </button>
       </div>
-      <div className="overflow-auto max-h-96">
-        <table className="min-w-full border-collapse border border-gray-200">
-          <thead className="bg-gray-100 sticky top-0">
+      <div className="overflow-x-auto overflow-y-auto max-h-96 border border-gray-200 rounded-lg">
+        <table className="min-w-full w-full border-collapse">
+          <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-semibold text-Brown border-b border-gray-200 whitespace-nowrap text-sm">
                 Name / Title
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-semibold text-Brown border-b border-gray-200 whitespace-nowrap text-sm">
                 Category
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-semibold text-Brown border-b border-gray-200 whitespace-nowrap text-sm">
                 Details (Email/Cost)
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-semibold text-Brown border-b border-gray-200 whitespace-nowrap text-sm">
                 Date
               </th>
-              <th className="text-left px-4 py-2 font-semibold text-Brown border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-semibold text-Brown border-b border-gray-200 whitespace-nowrap text-sm">
                 Status
               </th>
             </tr>
@@ -1356,31 +1686,14 @@ const handleExportExcel = async () => {
               </tr>
             ) : (
               reportData.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-100 text-sm text-left">
-                  {/* Name */}
-                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 font-medium">
-                    {item.title}
+                <tr key={index} className="hover:bg-gray-100 text-sm text-left transition-colors">
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 font-medium whitespace-nowrap">{item.title}</td>
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 capitalize whitespace-nowrap">{item.role}</td>
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 whitespace-nowrap">
+                    {item.estimatedCost > 0 ? `₦${item.estimatedCost.toLocaleString()}` : item.email}
                   </td>
-                  
-                  {/* Category */}
-                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 capitalize">
-                    {item.role}
-                  </td>
-                  
-                  {/* Cost or Email */}
-                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200">
-                    {item.estimatedCost > 0 
-                      ? `₦${item.estimatedCost.toLocaleString()}` 
-                      : item.email}
-                  </td>
-                  
-                  {/* Date */}
-                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200">
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </td>
-                  
-                  {/* Status Badge */}
-                  <td className="px-4 py-3 border-b border-gray-200">
+                  <td className="px-4 py-3 text-gray-700 border-b border-gray-200 whitespace-nowrap">{new Date(item.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 border-b border-gray-200 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${
                       item.status === 'success' || item.status === 'completed' || item.status === 'active' 
                         ? 'bg-green text-green-700' 
@@ -1400,28 +1713,27 @@ const handleExportExcel = async () => {
     </div>
 
     {/* 🔹 ANALYTICS CARDS */}
-    <div className="mt-8">
-      <h4 className="text-lg font-bold text-Brown mb-4">Analytics Overview</h4>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-blue-500">
+    <div className="mt-8 w-full overflow-x-auto">
+      <h4 className="text-base sm:text-lg font-bold text-Brown mb-4">Analytics Overview</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-Elegant-Gold">
           <h5 className="text-sm text-gray-600">Total Records</h5>
-          <p className="text-2xl font-bold text-gray-800">{reportStats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800">{reportStats.total}</p>
         </div>
-        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-green-500">
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-Elegant-Gold">
           <h5 className="text-sm text-gray-600">New This Month</h5>
-          <p className="text-2xl font-bold text-gray-800">{reportStats.monthly}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800">{reportStats.monthly}</p>
         </div>
-        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-yellow-500">
+        <div className="p-4 bg-white rounded-lg shadow-md border-l-4 border-Elegant-Gold">
           <h5 className="text-sm text-gray-600">Pending / Active</h5>
-          <p className="text-2xl font-bold text-gray-800">{reportStats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800">{reportStats.pending}</p>
         </div>
       </div>
     </div>
   </section>
 )}
 
-
-{activeSection === "Settings" && (
+{/* {activeSection === "Settings" && (
   <section className="p-6 bg-white rounded-lg shadow-md">
     <h3 className="text-2xl font-bold text-orangee mb-6">
       Settings
@@ -1431,7 +1743,7 @@ const handleExportExcel = async () => {
     </p>
 
     <div className="space-y-8">
-      {/* Profile Settings */}
+     
       <div className="border border-gray-200 rounded-lg p-6">
         <h4 className="text-lg font-semibold text-gray-700 mb-4">
           Profile Settings
@@ -1464,7 +1776,6 @@ const handleExportExcel = async () => {
         </div>
       </div>
 
-      {/* Preferences */}
       <div className="border border-gray-200 rounded-lg p-6">
         <h4 className="text-lg font-semibold text-gray-700 mb-4">
           Preferences
@@ -1487,7 +1798,6 @@ const handleExportExcel = async () => {
         </div>
       </div>
 
-      {/* Security Settings */}
       <div className="border border-gray-200 rounded-lg p-6">
         <h4 className="text-lg font-semibold text-gray-700 mb-4">
           Security Settings
@@ -1512,7 +1822,6 @@ const handleExportExcel = async () => {
         </div>
       </div>
 
-      {/* Notification Settings */}
       <div className="border border-gray-200 rounded-lg p-6">
         <h4 className="text-lg font-semibold text-gray-700 mb-4">
           Notifications
@@ -1535,7 +1844,6 @@ const handleExportExcel = async () => {
         </div>
       </div>
 
-      {/* Save Button */}
       <div className="flex justify-end">
         <button 
           className="bg-orangee text-white px-6 py-3 rounded-md shadow hover:bg-orange-600 transition focus:outline-none focus:ring focus:ring-orangee focus:ring-opacity-50">
@@ -1544,15 +1852,10 @@ const handleExportExcel = async () => {
       </div>
     </div>
   </section>
-)}
-
+)} */}
 
       </main>
-            {/* <footer className="bg-Brown text-Elegant-Gold font-bold py-6 mt-auto text-center">
-        <p>
-          &copy; {new Date().getFullYear()} LuxShoppers. All rights reserved.
-        </p>
-      </footer> */}
+    
     </div>
   );
 };
