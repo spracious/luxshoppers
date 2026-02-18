@@ -16,6 +16,8 @@ import DashboardPage from './pages/DashboardPage';
 import TrackErrandsSection from './pages/TrackErrandsSection';
 import { BASEURL } from "./constant";
 import AdminDashboard from './pages/AdminDashboard';
+import AgentDashboard from './pages/AgentDashboard';
+
 
 function App() {
 
@@ -48,6 +50,8 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage/>} />
         <Route path="/errands" element={<TrackErrandsSection/>} />
         <Route path="/AdminDashboard" element={<AdminDashboard/>} />
+        <Route path="/agent-dashboard" element={<AgentDashboard />} />
+
 
       </Routes>
     </Router>

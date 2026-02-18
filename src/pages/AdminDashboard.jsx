@@ -57,6 +57,11 @@ const [searchUser, setSearchUser] = useState("");
 const [reportData, setReportData] = useState([]);
 const [reportStats, setReportStats] = useState({ total: 0, monthly: 0, pending: 0 });
 const [reportLoading, setReportLoading] = useState(false);
+const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+const [selectedErrand, setSelectedErrand] = useState(null);
+const [agentsList, setAgentsList] = useState([]);
+const [selectedAgentId, setSelectedAgentId] = useState("");
+const [isAssigning, setIsAssigning] = useState(false);
 
 const [filters, setFilters] = useState({
   type: "", // matches backend: agents, users, errands, payments
@@ -633,6 +638,47 @@ const handleExportExcel = async () => {
     console.error("Export failed:", error);
   }
 };
+
+// Function to open modal and fetch agents
+const handleOpenAssignModal = async (errand) => {
+  setSelectedErrand(errand);
+  setSelectedAgentId(errand.agent?._id || ""); // Pre-select if already assigned
+  setIsAssignModalOpen(true);
+
+  try {
+    // Assuming your endpoint for fetching all agents is /admin/agents
+    const response = await axios.get(`${BASEURL}/admin/agents`); 
+    // Filter to ensure we only get valid agents if needed
+    setAgentsList(response.data.agents || response.data); 
+  } catch (error) {
+    console.error("Error fetching agents:", error);
+    alert("Could not load agents list.");
+  }
+};
+
+// Function to save the assignment
+const handleAssignAgentSubmit = async () => {
+  if (!selectedAgentId) return alert("Please select an agent.");
+  setIsAssigning(true);
+
+  try {
+    // Adjust endpoint based on your backend route
+    await axios.patch(`${BASEURL}/admin/errands/${selectedErrand.id || selectedErrand._id}/assign`, {
+      agentId: selectedAgentId
+    });
+    
+    setSuccessMessage("Agent assigned successfully! 🚀");
+    setIsAssignModalOpen(false);
+    fetchErrands(); // Refresh table to show new agent name
+    setTimeout(() => setSuccessMessage(""), 3000);
+  } catch (error) {
+    console.error("Assignment failed:", error);
+    alert("Failed to assign agent.");
+  } finally {
+    setIsAssigning(false);
+  }
+};
+
 
     // const generatePassword = () => {
     //   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
@@ -1373,6 +1419,7 @@ const handleExportExcel = async () => {
             <tr className="bg-gray-200 text-left text-Brown text-xs sm:text-sm uppercase tracking-wider">
               <th className="py-3 px-4 font-semibold">Client</th>
               <th className="py-3 px-4 font-semibold">Service</th>
+                 <th className="py-3 px-4 font-semibold">Assigned Agent</th> 
               <th className="py-3 px-4 font-semibold">Errand</th>
               <th className="py-3 px-4 font-semibold">Location</th>
               <th className="py-3 px-4 font-semibold">Address</th>
@@ -1439,12 +1486,20 @@ const handleExportExcel = async () => {
                 return (
                   <tr
                     key={notif.id || notif._id}
-                    className="hover:bg-white text-left transition-colors text-sm text-gray-700"
-                  >
-                    <td className="py-3 px-4 whitespace-nowrap font-medium">
-                      {notif.user?.name || "N/A"}
-                    </td>
+                    className="hover:bg-white text-left transition-colors text-sm text-gray-700">
+                    <td className="py-3 px-4 whitespace-nowrap font-medium">{notif.user?.name || "N/A"}</td>
                     <td className="py-3 px-4 whitespace-nowrap">{notif.title}</td>
+
+                    {/* ✅ NEW: Display Assigned Agent in ALL Tabs */}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                        {notif.agent ? (
+                            <span className="flex items-center gap-1">
+                                {notif.agent.name}
+                            </span>
+                        ) : (
+                            <span className="text-gray-400 italic">Unassigned</span>
+                        )}
+                    </td>
                     <td className="py-3 px-4 min-w-[200px]">{notif.details}</td>
                     <td className="py-3 px-4 whitespace-nowrap">{notif.location}</td>
                     <td className="py-3 px-4 min-w-[200px]">{notif.address}</td>
@@ -1468,29 +1523,35 @@ const handleExportExcel = async () => {
                       {/* Responsive Flex: Column on mobile, Row on Tablet/Desktop */}
                       <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
                         {/* Ongoing Button */}
+                       {notif.status === "pending" && (
+                            <button
+                            className="bg-Brown px-3 py-1.5 rounded text-xs sm:text-sm font-medium text-white hover:bg-blue-700 w-full sm:w-auto transition shadow-sm whitespace-nowrap"
+                            onClick={() => handleOpenAssignModal(notif)}
+                            >
+                            {notif.agent ? "Re-Assign" : "Assign Agent"}
+                            </button>
+                        )}
+
+                        {/* Ongoing Button */}
                         {notif.status === "pending" && (
                           <button
                             className="bg-orange-300 px-3 py-1.5 rounded text-xs sm:text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition shadow-sm whitespace-nowrap"
                             onClick={async () => {
+                              // Optional: Block if no agent assigned
+                              // if(!notif.agent) return alert("Please assign an agent first!");
+                              
                               try {
-                                await axios.patch(
-                                  `${BASEURL}/admin/errands/${
-                                    notif.id || notif._id
-                                  }/status`,
-                                  { status: "in-progress" }
-                                );
+                                await axios.patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, { status: "in-progress" });
                                 fetchErrands();
                                 setSuccessMessage("Errand moved to Ongoing! 🚀");
                                 setTimeout(() => setSuccessMessage(""), 3000);
-                              } catch (error) {
-                                console.error("Update failed:", error);
-                                alert("Failed to update status.");
-                              }
+                              } catch (error) { console.error(error); }
                             }}
                           >
                             Ongoing
                           </button>
                         )}
+
 
                         {/* Completed Button */}
                         {notif.status !== "completed" && (
@@ -1558,6 +1619,51 @@ const handleExportExcel = async () => {
         Next
       </button>
     </div>
+
+ {/* ✅ 3. ASSIGN AGENT MODAL (Place this at the bottom of the section) */}
+    {isAssignModalOpen && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <h3 className="text-xl font-bold text-Brown mb-4 text-center">Assign Agent</h3>
+          <p className="text-sm text-gray-600 mb-4 text-center">
+            Assigning errand: <span className="font-bold">{selectedErrand?.title}</span>
+          </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
+            <select
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-Brown"
+              value={selectedAgentId}
+              onChange={(e) => setSelectedAgentId(e.target.value)}
+            >
+              <option value="">-- Choose an Agent --</option>
+              {agentsList.map((agent) => (
+                <option key={agent._id} value={agent._id}>
+                  {agent.name} ({agent.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setIsAssignModalOpen(false)}
+              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAssignAgentSubmit}
+              disabled={isAssigning}
+              className="px-4 py-2 bg-Brown text-white rounded hover:bg-blue-700 transition flex items-center"
+            >
+              {isAssigning ? "Saving..." : "Assign Agent"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
   </section>
 )}
 
