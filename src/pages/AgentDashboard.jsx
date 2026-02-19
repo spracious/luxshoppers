@@ -15,33 +15,15 @@ const AgentDashboard = () => {
 const [homeActivities, setHomeActivities] = useState([]);
 const [isHomeLoading, setIsHomeLoading] = useState(false);
 const [homeError, setHomeError] = useState("");
-
+const [tasks, setTasks] = useState([]); // Array state named 'task' to match your map code
+const [isTaskLoading, setIsTaskLoading] = useState(false);
   const handleSectionChange = (section) => {
     setActiveSection(section);
     setSelectedNotification(null);
   };
 
   const handleLogout = () => navigate("/login");
-
-  const task = [
-    { task: "Deliver package to Zone 4", due: "Today" },
-    { task: "Pick up documents from Client A", due: "Tomorrow" },
-    { task: "Verify shipment at Warehouse", due: "Dec 20" },
-  ];
-
-//   const stats = [
-//     { title: "Tasks", count: "12", description: "Pending tasks to complete", color: "text-blue-600" },
-//     { title: "Orders", count: "8", description: "Ongoing delivery orders", color: "text-green-600" },
-//     { title: "Messages", count: "5", description: "Unread notifications", color: "text-red-600" },
-//     { title: "Performance", count: "89%", description: "Performance score", color: "text-purple-600" },
-//   ];
-
-//   const recentActivities = [
-//     { description: "Errand #123 completed", timestamp: "5 mins ago" },
-//     { description: "New user registered", timestamp: "15 mins ago" },
-//     { description: "Payment received for Order #456", timestamp: "1 hour ago" },
-//   ];
-
+//home
 useEffect(() => {
   const fetchHomeData = async () => {
     // Only fetch if this section is active
@@ -51,49 +33,52 @@ useEffect(() => {
     setHomeError("");
 
     try {
-      // ✅ Replace with your actual backend endpoint
-      const response = await axios.get(`${BASEURL}/admin/stats`); 
-      const data = response.data; // Assuming backend returns { stats: [], recentActivities: [] }
+      // 1. Get User/Agent ID from Local Storage
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const agentId = currentUser._id || currentUser.id;
 
-      // 1. Format Stats Cards (Mapping API data to UI format)
-      // We assume your API returns distinct values like totalUsers, revenue, etc.
-      // If your API returns an array called 'stats', you can set it directly.
+      // 2. Fetch Data (Passing agentId as query param)
+      const response = await axios.get(`${BASEURL}/admin/home-stats?agentId=${agentId}`);
+      const data = response.data; 
+
+      // 3. Format Stats Cards
+      // Note: We use the direct keys returned from the backend (data.completedErrands, etc.)
       const formattedStats = [
         {
-          title: "Active Errands",
-          count: data.stats.find(s => s.label === "Total Errands")?.value || 0,
-          color: "text-blue-600",
-          description: "Total errands",
-        },  
-    {
-    title: "Errands Completed",
-    // ✅ Fix: Use the exact label from backend
-    count: data.stats.find(s => s.label === "Errand Completed")?.value || 0, 
-    color: "text-green-600",
-    description: "Successfully delivered", // Updated description
-  },
-  {
-    title: "Total Earnings",
-    // ✅ Fix: Format currency here
-    count: `₦${(data.stats.find(s => s.label === "Total Earnings")?.value || 0).toLocaleString()}`, 
-    color: "text-blue-600",
-    description: "Earnings this month",
-  },
-        {
-          title: "Agent Assignrd Errands",
-          count: data.stats.find(s => s.label === "Errand Pending Approvals")?.value || 0,
-          color: "text-orange-500",
-          description: "Requires attention",
+          title: "Total Errands",
+          // We calculate total by summing the statuses returned by the API
+          count: (data.pendingErrands || 0) + (data.activeErrands || 0) + (data.completedErrands || 0),
+          color: "text-gray-600",
+          description: "All time records",
         },
         {
+          title: "Completed Errands",
+          count: data.completedErrands || 0, 
+          color: "text-green-600",
+          description: "Deliveries completed",
+        },
+        {
+          title: "Active Errands",
+          count: data.activeErrands || 0,
+          color: "text-blue-600",
+          description: "In Progress",
+        },
+        // {
+        //   title: "Pending Requests",
+        //   count: data.pendingErrands || 0,
+        //   color: "text-orange-500",
+        //   description: "Awaiting Action",
+        // },
+        {
           title: "Total Agents",
-          count: data.stats.find(s => s.label === "Registered Agents")?.value || 0,
+          count: data.totalAgents || 0,
           color: "text-purple-600",
-          description: "Agents",
+          description: "Registered Agents",
         }
       ];
 
       setHomeStats(formattedStats);
+      // Ensure we pass an empty array if recentActivities is undefined
       setHomeActivities(data.recentActivities || []);
 
     } catch (error) {
@@ -106,6 +91,42 @@ useEffect(() => {
 
   fetchHomeData();
 }, [activeSection]);
+
+//task
+const [taskPage, setTaskPage] = useState(1);
+const [taskTotalPages, setTaskTotalPages] = useState(1);
+
+useEffect(() => {
+  const fetchTasks = async () => {
+    if (activeSection !== "Task") return;
+
+    setIsTaskLoading(true);
+
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const agentId = currentUser._id || currentUser.id;
+
+      // ✅ Pass 'page' and 'limit' in query
+      const response = await axios.get(`${BASEURL}/admin/tasks?agentId=${agentId}&page=${taskPage}&limit=10`);
+      
+      // ✅ Handle new response structure
+      if (response.data && Array.isArray(response.data.tasks)) {
+        setTasks(response.data.tasks);
+        setTaskTotalPages(response.data.totalPages);
+      } else {
+        setTasks([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      setTasks([]);
+    } finally {
+      setIsTaskLoading(false);
+    }
+  };
+
+  fetchTasks();
+}, [activeSection, taskPage]);
 
   const notifications = [
     { id: 1, title: "New orders are available for review.", sender: "Admin", status: "unattended" },
@@ -125,7 +146,7 @@ useEffect(() => {
           <p className="text-sm text-Soft-beige mt-1">Welcome back!</p>
         </div>
         <nav className="flex-grow p-4">
-          {["Home", "Task", "Orders", "Notifications", "Profile"].map((section) => (
+          {["Home", "Errand"].map((section) => (
             <button
               key={section}
               onClick={() => handleSectionChange(section)}
@@ -231,7 +252,7 @@ useEffect(() => {
                     {activity.description}
                   </p>
                   
-                  <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
+                  {/* <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
                     {new Date(activity.timestamp).toLocaleString("en-NG", {
                       weekday: "short",
                       day: "numeric",
@@ -239,7 +260,7 @@ useEffect(() => {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
-                  </span>
+                  </span> */}
                 </li>
               ))
             )}
@@ -250,190 +271,131 @@ useEffect(() => {
   </section>
 )}
 
-        {activeSection === "Task" && (
-          <section>
-            <h3 className="text-xl font-bold mb-4">Service Summary</h3>
-            <ul className="space-y-2">
-              {task.map((item, index) => (
-                <li key={index} className="py-3 flex justify-between items-center">
-                  <span className="text-gray-600">{item.task}</span>
-                  <span className="text-sm text-gray-500">{item.due}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+{activeSection === "Errand" && (
+  <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 pb-8">
+    <h3 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6 text-Brown px-1">
+      Active Errand List
+    </h3>
+
+    {isTaskLoading ? (
+      <div className="flex justify-center py-12">
+        <div className="w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    ) : !tasks || tasks.length === 0 ? (
+      <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200 mx-2">
+        <p className="text-gray-500 text-base sm:text-lg">No active tasks found.</p>
+      </div>
+    ) : (
+      <>
+        {/* Table Container */}
+        <div className="bg-white rounded-lg shadow-md text-left border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 text-left">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Client
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Service
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[160px] sm:min-w-[200px]">
+                    Description
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[140px] sm:min-w-[180px]">
+                    Address
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Phone
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Due Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white text-left divide-y divide-gray-200">
+                {tasks.map((task) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const taskDate = task.dueDate ? new Date(task.dueDate) : null;
+                  const isOverdue = taskDate ? taskDate < today : false;
+
+                  return (
+                    <tr key={task.id || task._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                        {task.clientName || "Unknown"}
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                        <span className="bg-blue-100 text-blue-800 text-[10px] sm:text-xs font-semibold px-2 py-1 rounded">
+                          {task.service || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                        <span className="line-clamp-2">
+                          {task.description || "No description"}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                        <span className="line-clamp-2">
+                          {task.address || "No address"}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-blue-600 hover:underline">
+                        {task.phone ? (
+                          <a href={`tel:${task.phone}`}>{task.phone}</a>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                        <div className="flex flex-col">
+                          <span className={`font-semibold ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
+                            {taskDate ? taskDate.toLocaleDateString("en-NG", {
+                              month: 'short', day: 'numeric', year: '2-digit'
+                            }) : "N/A"}
+                          </span>
+                          {isOverdue && (
+                            <span className="text-[10px] text-red-500 font-bold">Overdue</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Responsive Pagination */}
+        {taskTotalPages > 1 && (
+          <div className="flex flex-wrap justify-center items-center mt-6 gap-3">
+            <button
+              onClick={() => setTaskPage((prev) => Math.max(prev - 1, 1))}
+              disabled={taskPage === 1}
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+
+            <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+              Page {taskPage} of {taskTotalPages}
+            </span>
+
+            <button
+              onClick={() => setTaskPage((prev) => Math.min(prev + 1, taskTotalPages))}
+              disabled={taskPage === taskTotalPages}
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-Brown text-white border border-transparent rounded-lg shadow-sm hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
         )}
-
-{activeSection === "Orders" && (
-  <section>
-    <h3 className="text-3xl text-orangee font-bold mb-4">Orders</h3>
-    {/* <p className="mb-4 text-gray-600">
-      Here, you can manage and track all your current and past orders. Review the status of each order, update their details, and take appropriate actions.
-    </p> */}
-
-    {/* <div className="mb-6">
-      <button
-        onClick={() => alert("Adding a new order...")}
-        className="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600"
-      >
-        Add New Order
-      </button>
-    </div> */}
-
-<div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-  {[
-    { id: 1, customer: "Client A", status: "Pending", deliveryDate: "Dec 20", description: "Documents delivery" },
-    { id: 2, customer: "Client B", status: "Delivered", deliveryDate: "Dec 15", description: "Package drop-off" },
-    { id: 3, customer: "Client C", status: "In Progress", deliveryDate: "Dec 18", description: "Urgent shipment" },
-  ].map((order) => (
-    <div
-      key={order.id}
-      className="p-4 md:p-6 bg-white shadow-md rounded-lg border border-gray-200 hover:shadow-lg transition"
-    >
-      <h4 className="text-lg font-bold text-green mb-2">Order #{order.id}</h4>
-      <p className="text-gray-600">
-        <strong>Customer:</strong> {order.customer}
-      </p>
-      <p className="text-gray-600">
-        <strong>Status:</strong>{" "}
-        <span
-          className={`${
-            order.status === "Delivered"
-              ? "text-green"
-              : order.status === "Pending"
-              ? "text-red-500"
-              : "text-yellow-500"
-          } font-semibold`}
-        >
-          {order.status}
-        </span>
-      </p>
-      <p className="text-gray-600">
-        <strong>Delivery Date:</strong> {order.deliveryDate}
-      </p>
-      <p className="text-gray-600 mb-4">
-        <strong>Description:</strong> {order.description}
-      </p>
-
-      <div className="flex flex-wrap justify-center gap-4">
-        <button
-          onClick={() => alert(`Viewing details for Order #${order.id}`)}
-          className="px-4 py-2 bg-blue text-white rounded-lg shadow-md hover:bg-blue-600 transition"
-        >
-          View Details
-        </button>
-        {order.status !== "Delivered" && (
-          <button
-            onClick={() => alert(`Marking Order #${order.id} as Delivered`)}
-            className="px-4 py-2 bg-green text-white rounded-lg shadow-md hover:bg-green-600 transition"
-          >
-            Mark as Delivered
-          </button>
-        )}
-      </div>
-    </div>
-  ))}
-</div>
-
-
-    <h4 className="text-lg font-bold text-green mt-8 mb-4">Order Summary</h4>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="p-4 bg-blue-100 rounded-lg shadow-md text-center">
-        <p className="text-2xl font-bold text-blue-600">8</p>
-        <p className="text-gray-600">Total Orders</p>
-      </div>
-      <div className="p-4 bg-green rounded-lg shadow-md text-center text-blue">
-        <p className="text-2xl font-bold text-green-600">3</p>
-        <p className="text-blue">Delivered Orders</p>
-      </div>
-      <div className="p-4 bg-yellow-100 rounded-lg shadow-md text-center">
-        <p className="text-2xl font-bold text-yellow-600">2</p>
-        <p className="text-gray-600">In Progress</p>
-      </div>
-      <div className="p-4 bg-red-100 rounded-lg shadow-md text-center">
-        <p className="text-2xl font-bold text-red-600">3</p>
-        <p className="text-gray-600">Pending Orders</p>
-      </div>
-    </div>
+      </>
+    )}
   </section>
 )}
 
-
-        {activeSection === "Notifications" && (
-          <section>
-            <h3 className="text-xl font-bold mb-4">Notifications</h3>
-            <div className="space-x-2 mb-4">
-              {["Unattended", "Pending", "Executed"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveMessageTab(tab)}
-                  className={`px-4 py-2 rounded-lg ${
-                    activeMessageTab === tab ? "bg-orange-500 text-white" : "bg-gray-200"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            <ul className="mt-4 space-y-2">
-              {filteredNotifications.map((notif) => (
-                <li
-                  key={notif.id}
-                  className="p-4 bg-white rounded-lg shadow-md"
-                  onClick={() => setSelectedNotification(notif)}
-                >
-                  <h4 className="font-bold">{notif.title}</h4>
-                  <p className="text-sm text-gray-500">From: {notif.sender}</p>
-                </li>
-              ))}
-            </ul>
-            {selectedNotification && (
-              <div className="mt-4 p-4 bg-gray-100 rounded-lg shadow-md">
-                <h4 className="font-bold">{selectedNotification.title}</h4>
-                <p>Details about the notification go here.</p>
-              </div>
-            )}
-          </section>
-        )}
-
-        {activeSection === "Profile" && (
-          <section>
-            <h3 className="text-xl font-bold mb-4">Profile Settings</h3>
-            <form className="space-y-4">
-              <div>
-                <label className="block text-gray-700">Full Name</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded"
-                  placeholder="Enter your full name"
-                  defaultValue={userName}
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Email</label>
-                <input
-                  type="email"
-                  className="w-full p-2 border rounded"
-                  placeholder="Enter your email"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Password</label>
-                <input
-                  type="password"
-                  className="w-full p-2 border rounded"
-                  placeholder="Enter a new password"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-orange-500 text-white rounded shadow-md"
-              >
-                Save Changes
-              </button>
-            </form>
-          </section>
-        )}
       </main>
     </div>
   );
