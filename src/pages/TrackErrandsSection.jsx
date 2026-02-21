@@ -134,9 +134,12 @@ const TrackErrandsSection = () => {
                     </th>
                     <th className="py-3 px-6 text-centre text-Brown">
                       Voucher
+                    </th>    
+                    <th className="py-3 px-6 text-centre text-Brown">
+                      Voucher Amount
                     </th>
                     <th className="py-3 px-6 text-centre text-Brown">
-                      Amount
+                      Total
                     </th>
                     <th className="py-3 px-6 text-centre text-Brown">
                       Due Date
@@ -164,7 +167,17 @@ const TrackErrandsSection = () => {
                       </td>
                       <td className="py-3 px-6">
                         {errand.voucher?.category || "N/A"}
-                      </td>
+                      </td>    
+<td className="py-3 px-6">
+  {errand.customAmount
+    ? Number(errand.customAmount).toLocaleString()
+    : errand.voucher?.amount
+    ? Number(errand.voucher.amount).toLocaleString()
+    : "N/A"}
+</td>
+
+
+
                       <td className="py-3 px-6">
                         ₦
                         {errand.estimatedCost

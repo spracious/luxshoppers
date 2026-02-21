@@ -44,52 +44,60 @@ const SignUpPage = () => {
     return validationErrors;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrors({});
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  setErrors({});
 
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setIsSubmitting(false);
-      return;
-    }
+  const validationErrors = validate();
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+    setIsSubmitting(false);
+    return;
+  }
 
-    try {
-      const response = await fetch("https://errandgirlie-backend.onrender.com/api/v1/auth/register", {
+  try {
+    const response = await fetch(
+      "https://errandgirlie-backend.onrender.com/api/v1/auth/register",
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-          credentials: "include" // ✅ important if backend uses cookies or sessions
-      });
+        credentials: "include", // ✅ needed if backend uses cookies/sessions
+      }
+    );
 
-      const data = await response.json();
-      console.log("API Response:", data); // Debugging
+    const data = await response.json();
+    console.log("API Response:", data); // Debugging
 
-      if (!response.ok) throw new Error(data.message || "Signup failed");
+    if (!response.ok) throw new Error(data.message || "Signup failed");
 
-      // Store user data in localStorage
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-      };
+    // ✅ Store user in the same key App.jsx reads
+    const userData = {
+      name: data.user?.name || formData.name,
+      email: data.user?.email || formData.email,
+      role: data.user?.role || formData.role,
+    };
 
-      localStorage.setItem("user", JSON.stringify(userData));
-      console.log("User stored in localStorage:", userData);
+localStorage.setItem("currentUser", JSON.stringify(userData));
+setCurrentUser(userData);
+window.dispatchEvent(new Event("storage"));
 
-      setSuccessMessage("Signup successful! Redirecting...");
-      setTimeout(() => navigate("/dashboard"), 2000); // Redirect after 2 seconds
-    } catch (error) {
-      console.error("Signup Error:", error.message);
-      setErrors({ apiError: error.message });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+
+    console.log("User stored in localStorage:", userData);
+
+    setSuccessMessage("Signup successful! Redirecting...");
+    setTimeout(() => navigate("/dashboard"), 2000); // Redirect after 2 seconds
+  } catch (error) {
+    console.error("Signup Error:", error.message);
+    setErrors({ apiError: error.message });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="bg-white min-h-screen flex flex-col">

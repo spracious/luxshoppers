@@ -45,6 +45,24 @@ const HomePage = () => {
     type: "success",
   });
 
+   const [deliveryCharges, setDeliveryCharges] = useState({});
+  const [selectedLocation, setSelectedLocation] = useState("Abuja");
+
+    useEffect(() => {
+    const fetchDeliveryCharges = async () => {
+      try {
+        const res = await axios.get(`${BASEURL}/deliveries/charges`);
+        if (res.data.success) {
+          setDeliveryCharges(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch delivery charges:", err);
+      }
+    };
+
+    fetchDeliveryCharges();
+  }, []);
+
   const [customerDetails, setCustomerDetails] = useState({
     address: "",
     email: customer.email,
@@ -63,15 +81,20 @@ const HomePage = () => {
   };
 
   // ✅ HELPER: Centralized logic to get the actual amount currently being used
-  const getCurrentAmount = () => {
-    if (!selectedVoucher) return Number(customAmount) || 0;
-    if (selectedVoucher.isUnlimited) return Number(customAmount) || 0;
-    return Number(selectedVoucher.amount) || 0;
-  };
+ const getCurrentAmount = () => {
+  if (!selectedVoucher) return 0;
+
+  if (selectedVoucher.isUnlimited) {
+    return Number(customAmount || 0);
+  }
+
+  return Number(selectedVoucher.amount || 0);
+};
+
 
   const calculateTotal = () => {
     const voucherCost = getCurrentAmount(); // Use helper
-    const deliveryCharge = DELIVERY_CHARGES[customerDetails.location] || 0;
+    const deliveryCharge = deliveryCharges[customerDetails.location] || 0;
     const serviceCharge = voucherCost * 0.1;
     const total = voucherCost + serviceCharge + deliveryCharge;
     setTotalCost(total);
@@ -158,91 +181,67 @@ const HomePage = () => {
     handler.openIframe();
   };
 
-  const saveOrderToBackend = async (paymentReference) => {
-    try {
-      if (!currentUser._id) throw new Error("User not logged in");
+const saveOrderToBackend = async (paymentReference, paidAmount) => {
+  try {
+    const finalAmount = paidAmount; // exact amount user paid
 
-      const errandPayload = {
-        user: currentUser._id,
-        service: selectedService?.name || "Custom Service",
-        errandDescription: customerDetails.description || "N/A",
-        location: customerDetails.location,
-        phone: customerDetails.phoneNumber,
-        address: customerDetails.address,
-        estimatedCost: Number(totalCost),
-        dueDate: dueDate,
-        paymentReference,
-      };
+    const errandPayload = {
+      user: currentUser._id,
+      service: selectedService?.name || "Custom Service",
+      errandDescription: customerDetails.description || "N/A",
+      location: customerDetails.location,
+      phone: customerDetails.phoneNumber,
+      address: customerDetails.address,
+      estimatedCost: finalAmount,
+      dueDate: dueDate,
+      paymentReference,
+    };
 
-      if (selectedVoucher?._id) {
-        errandPayload.voucher = selectedVoucher._id;
-      }
+    // Send voucher ID
+    if (selectedVoucher?._id) errandPayload.voucher = selectedVoucher._id;
 
-      const errandResponse = await axios.post(
-        `${BASEURL}/errands/send`,
-        errandPayload
-      );
-
-      const errandId = errandResponse.data.errand._id;
-
-      const paymentPayload = {
-        user: currentUser._id,
-        errand: errandId,
-        service: { name: selectedService?.name || "Custom Service" },
-        amount: Number(totalCost),
-        status: "pending",
-        transactionId: paymentReference,
-        paymentMethod: "Paystack",
-      };
-
-      if (selectedVoucher?._id) {
-        paymentPayload.voucher = selectedVoucher._id;
-      }
-
-      await axios.post(`${BASEURL}/payments/generate`, paymentPayload);
-
-      showPopup("Payment successful & order received!", "success");
-      setIsModalOpen(false);
-
-      setTimeout(() => {
-        setStep(1);
-        navigate("/errands");
-      }, 2000);
-    } catch (err) {
-      console.error("Error saving order:", err);
-      showPopup(
-        "Payment successful but saving order failed. Please contact support.",
-        "error"
-      );
-    }
-  };
-
-  const handleConfirmPayment = () => {
-    const currentAmount = getCurrentAmount(); // use helper
-
+    // Send customAmount for unlimited vouchers
     if (selectedVoucher?.isUnlimited) {
-      if (!currentAmount || currentAmount < selectedVoucher.minAmount) {
-        showPopup(
-          `Amount must be ₦${selectedVoucher.minAmount.toLocaleString()} or more`,
-          "error"
-        );
-        return;
-      }
+      errandPayload.customAmount = Number(customAmount);
     }
 
-    if (!totalCost) {
-      showPopup("Invalid payment amount", "error");
-      return;
-    }
+    await axios.post(`${BASEURL}/errands/send`, errandPayload);
 
-    handlePayWithPaystack(
-      totalCost,
-      customerDetails.email,
-      customerDetails.phoneNumber,
-      (response) => saveOrderToBackend(response.reference),
-      () => showPopup("Payment cancelled", "error")
-    );
-  };
+    showPopup("Payment successful & order received!", "success");
+    setIsModalOpen(false);
+    setTimeout(() => { setStep(1); navigate("/errands"); }, 1000);
+
+  } catch (err) {
+    console.error("Error saving order:", err);
+    showPopup("Payment successful but saving order failed. Please contact support.", "error");
+  }
+};
+
+
+
+const handleConfirmPayment = () => {
+  const finalAmount = getCurrentAmount() + getCurrentAmount() * 0.1 + deliveryCharges[customerDetails.location];
+
+  if (selectedVoucher?.isUnlimited && (!customAmount || customAmount < selectedVoucher.minAmount)) {
+    showPopup(`Amount must be ₦${selectedVoucher.minAmount.toLocaleString()} or more`, "error");
+    return;
+  }
+
+  if (!finalAmount || finalAmount <= 0) {
+    showPopup("Invalid payment amount", "error");
+    return;
+  }
+
+  handlePayWithPaystack(
+    finalAmount,
+    customerDetails.email,
+    customerDetails.phoneNumber,
+    (response) => saveOrderToBackend(response.reference, finalAmount),
+    () => showPopup("Payment cancelled", "error")
+  );
+};
+
+
 
   return (
     <div className="min-h-screen flex flex-col bg-white relative">
@@ -416,27 +415,25 @@ const HomePage = () => {
                     )}
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="location"
-                    className="block text-gray-700 font-bold"
-                  >
-                    Location
-                  </label>
-                  <select
-                    id="location"
-                    name="location"
-                    value={customerDetails.location}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    {Object.keys(DELIVERY_CHARGES).map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+               <div>
+  <label htmlFor="location" className="block text-gray-700 font-bold">
+    Location
+  </label>
+  <select
+    id="location"
+    name="location"
+    value={customerDetails.location}
+    onChange={handleChange}
+    className="w-full p-2 border border-gray-300 rounded-lg"
+  >
+    {Object.keys(deliveryCharges).map((loc) => (
+      <option key={loc} value={loc}>
+        {loc}
+      </option>
+    ))}
+  </select>
+</div>
+
                 <div>
                   <label
                     htmlFor="description"
@@ -455,22 +452,25 @@ const HomePage = () => {
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="date"
-                    className="block text-gray-700 font-bold"
-                  >
-                    Expected Delievry Date
-                  </label>
-                  <input
-                    id="date"
-                    name="dueDate"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    required
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
+  <label
+    htmlFor="date"
+    className="block text-gray-700 font-bold"
+  >
+    Expected Delivery Date
+  </label>
+
+  <input
+    id="date"
+    name="dueDate"
+    type="date"
+    value={dueDate}
+    min={new Date().toISOString().split("T")[0]}  
+    onChange={(e) => setDueDate(e.target.value)}
+    required
+    className="w-full p-2 border border-gray-300 rounded-lg"
+  />
+</div>
+
               </form>
 
               <div className="flex justify-between mt-6">
@@ -513,14 +513,15 @@ const HomePage = () => {
 
             <p>
               <strong>Delivery Charge:</strong> ₦
-              {DELIVERY_CHARGES[customerDetails.location].toLocaleString()}
+              {deliveryCharges[customerDetails.location].toLocaleString()}
             </p>
 
             <hr className="my-4" />
 
-            <p className="text-xl font-bold">
-              <strong>Total:</strong> ₦{totalCost.toLocaleString()}
-            </p>
+<p className="text-xl font-bold">
+  <strong>Total:</strong> ₦
+  {(getCurrentAmount() + getCurrentAmount() * 0.1 + deliveryCharges[customerDetails.location]).toLocaleString()}
+</p>
 
             <div className="flex justify-between mt-6">
               <button

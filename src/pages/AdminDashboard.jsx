@@ -535,7 +535,9 @@ useEffect(() => {
       setTotalPages(res.data.totalPages);
     } catch (error) {
       console.error("Error fetching errands:", error);
-    }
+    } finally {
+    setIsLoading(false); // 🔥 Stop loading ALWAYS
+  }
   };
 
   useEffect(() => {
@@ -1357,6 +1359,7 @@ const handleAssignAgentSubmit = async () => {
 
 {activeSection === "Errands" && (
   <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 pb-6">
+
     <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-Brown mb-6 text-center">
       Errands
     </h2>
@@ -1378,7 +1381,7 @@ const handleAssignAgentSubmit = async () => {
       ))}
     </div>
 
-    {/* Search / Filters */}
+       {/* Search / Filters */}
     <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-6 items-stretch sm:items-center">
       <input
         type="text"
@@ -1410,24 +1413,30 @@ const handleAssignAgentSubmit = async () => {
       </div>
     )}
 
-    {/* Errands Table */}
-    {filteredNotifications.length > 0 ? (
+    {/* Loading */}
+    {isLoading ? (
+      <div className="flex justify-center items-center py-20">
+        <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    ) : filteredNotifications.length > 0 ? (
       <div className="w-full overflow-x-auto rounded-lg shadow-md border border-gray-200">
-        {/* Added min-w-[1000px] to force horizontal scroll on mobile instead of squishing columns */}
+        {/* Added min-w-[1000px] to force horizontal scroll on mobile */}
         <table className="min-w-[1000px] w-full bg-gray-100">
           <thead>
-            <tr className="bg-gray-200 text-left text-Brown text-xs sm:text-sm uppercase tracking-wider">
-              <th className="py-3 px-4 font-semibold">Client</th>
-              <th className="py-3 px-4 font-semibold">Service</th>
-                 <th className="py-3 px-4 font-semibold">Assigned Agent</th> 
-              <th className="py-3 px-4 font-semibold">Errand</th>
-              <th className="py-3 px-4 font-semibold">Location</th>
-              <th className="py-3 px-4 font-semibold">Address</th>
-              <th className="py-3 px-4 font-semibold">Voucher</th>
-              <th className="py-3 px-4 font-semibold">Total Cost</th>
-              <th className="py-3 px-4 font-semibold">Created Date & Time</th>
-              <th className="py-3 px-4 font-semibold">Due Date</th>
-              <th className="py-3 px-4 font-semibold text-center">Actions</th>
+            <tr className="bg-gray-200 text-left text-Brown text-xs uppercase">
+              <th className="py-3 px-4">Client</th>
+              <th className="py-3 px-4">Service</th>
+              <th className="py-3 px-4">Assigned Agent</th>
+              <th className="py-3 px-4">Errand</th>
+              <th className="py-3 px-4">Location</th>
+              <th className="py-3 px-4">Location Amount</th>
+              <th className="py-3 px-4">Address</th>
+              <th className="py-3 px-4">Voucher</th>
+              <th className="py-3 px-4">Voucher Amount</th>
+              <th className="py-3 px-4">Total Cost</th>
+              <th className="py-3 px-4">Created</th>
+              <th className="py-3 px-4">Due</th>
+              <th className="py-3 px-4 text-center">Actions</th>
             </tr>
           </thead>
 
@@ -1460,9 +1469,7 @@ const handleAssignAgentSubmit = async () => {
                   notif.status = "overdue";
                   axios
                     .patch(
-                      `${BASEURL}/admin/errands/${
-                        notif.id || notif._id
-                      }/status`,
+                      `${BASEURL}/admin/errands/${notif.id || notif._id}/status`,
                       {
                         status: "overdue",
                       }
@@ -1484,52 +1491,62 @@ const handleAssignAgentSubmit = async () => {
                 if (!showRow) return null;
 
                 return (
-                  <tr
-                    key={notif.id || notif._id}
-                    className="hover:bg-white text-left transition-colors text-sm text-gray-700">
-                    <td className="py-3 px-4 whitespace-nowrap font-medium">{notif.user?.name || "N/A"}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">{notif.title}</td>
+              <tr key={notif.id} className="hover:bg-white text-sm">
 
-                    {/* ✅ NEW: Display Assigned Agent in ALL Tabs */}
+                <td className="py-3 px-4">{notif.user?.name || "N/A"}</td>
+                <td className="py-3 px-4">{notif.title}</td>
+       {/* Assigned Agent */}
                     <td className="py-3 px-4 whitespace-nowrap">
-                        {notif.agent ? (
-                            <span className="flex items-center gap-1">
-                                {notif.agent.name}
-                            </span>
-                        ) : (
-                            <span className="text-gray-400 italic">Unassigned</span>
-                        )}
+                      {notif.agent ? (
+                        <span className="flex items-center gap-1 font-semibold text-Brown">
+                          {notif.agent.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">Unassigned</span>
+                      )}
                     </td>
-                    <td className="py-3 px-4 min-w-[200px]">{notif.details}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">{notif.location}</td>
-                    <td className="py-3 px-4 min-w-[200px]">{notif.address}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {notif.voucher?.category || "N/A"}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {notif.estimatedCost}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {new Date(notif.timestamp).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {notif.dueDate
-                        ? new Date(notif.dueDate).toLocaleDateString()
-                        : "Not Set"}
-                    </td>
+                <td className="py-3 px-4">{notif.details}</td>
+                <td className="py-3 px-4">{notif.location}</td>
 
-                    {/* Actions */}
+             {/* Location Amount */}
+<td className="py-3 px-4">
+  {typeof notif.locationAmount === "number"
+    ? `₦${notif.locationAmount.toLocaleString()}`
+    : "₦0"}
+</td>
+
+
+                <td className="py-3 px-4">{notif.address}</td>
+
+                {/* Voucher */}
+                <td className="py-3 px-4">{notif.voucher?.category || "N/A"}</td>
+
+  {/* Voucher Amount */}
+  <td className="py-3 px-4">
+    {notif.voucher?.amount
+      ? `₦${notif.voucher.amount.toLocaleString()}`
+      : notif.customAmount
+      ? `₦${notif.customAmount.toLocaleString()}`
+      : "₦0"}
+  </td>
+
+                <td className="py-3 px-4">{notif.estimatedCost?.toLocaleString()}</td>
+                <td className="py-3 px-4">{new Date(notif.timestamp).toLocaleString()}</td>
+                <td className="py-3 px-4">
+                  {notif.dueDate ? new Date(notif.dueDate).toLocaleDateString() : "Not Set"}
+                </td>
+
+                     {/* Actions */}
                     <td className="py-3 px-4">
-                      {/* Responsive Flex: Column on mobile, Row on Tablet/Desktop */}
                       <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
-                        {/* Ongoing Button */}
-                       {notif.status === "pending" && (
-                            <button
+                        {/* Assign/Re-Assign Button */}
+                        {notif.status === "pending" && (
+                          <button
                             className="bg-Brown px-3 py-1.5 rounded text-xs sm:text-sm font-medium text-white hover:bg-blue-700 w-full sm:w-auto transition shadow-sm whitespace-nowrap"
                             onClick={() => handleOpenAssignModal(notif)}
-                            >
+                          >
                             {notif.agent ? "Re-Assign" : "Assign Agent"}
-                            </button>
+                          </button>
                         )}
 
                         {/* Ongoing Button */}
@@ -1537,21 +1554,26 @@ const handleAssignAgentSubmit = async () => {
                           <button
                             className="bg-orange-300 px-3 py-1.5 rounded text-xs sm:text-sm font-medium text-Brown hover:bg-orange-400 w-full sm:w-auto transition shadow-sm whitespace-nowrap"
                             onClick={async () => {
-                              // Optional: Block if no agent assigned
-                              // if(!notif.agent) return alert("Please assign an agent first!");
-                              
                               try {
-                                await axios.patch(`${BASEURL}/admin/errands/${notif.id || notif._id}/status`, { status: "in-progress" });
+                                await axios.patch(
+                                  `${BASEURL}/admin/errands/${
+                                    notif.id || notif._id
+                                  }/status`,
+                                  { status: "in-progress" }
+                                );
                                 fetchErrands();
-                                setSuccessMessage("Errand moved to Ongoing! 🚀");
+                                setSuccessMessage(
+                                  "Errand moved to Ongoing! 🚀"
+                                );
                                 setTimeout(() => setSuccessMessage(""), 3000);
-                              } catch (error) { console.error(error); }
+                              } catch (error) {
+                                console.error(error);
+                              }
                             }}
                           >
                             Ongoing
                           </button>
                         )}
-
 
                         {/* Completed Button */}
                         {notif.status !== "completed" && (
@@ -1589,7 +1611,7 @@ const handleAssignAgentSubmit = async () => {
                     </td>
                   </tr>
                 );
-              })}
+ })}
           </tbody>
         </table>
       </div>
@@ -1599,38 +1621,45 @@ const handleAssignAgentSubmit = async () => {
       </p>
     )}
 
-    {/* Pagination */}
-    <div className="flex flex-wrap justify-center mt-6 gap-2">
-      <button
-        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
-        onClick={() => setPage(page - 1)}
-        disabled={page === 1}
-      >
-        Prev
-      </button>
-      <span className="px-2 py-2 text-sm sm:text-base flex items-center">
-        Page {page} of {totalPages}
-      </span>
-      <button
-        className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
-        onClick={() => setPage(page + 1)}
-        disabled={page === totalPages}
-      >
-        Next
-      </button>
-    </div>
+    {/* Pagination - Hide when loading */}
+    {!isLoading && totalPages > 1 && (
+      <div className="flex flex-wrap justify-center mt-6 gap-2">
+        <button
+          className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1}
+        >
+          Prev
+        </button>
+        <span className="px-2 py-2 text-sm sm:text-base flex items-center">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          className="px-4 py-2 bg-Brown text-white rounded disabled:opacity-50 text-sm sm:text-base hover:bg-opacity-90 transition"
+          onClick={() => setPage(page + 1)}
+          disabled={page === totalPages}
+        >
+          Next
+        </button>
+      </div>
+    )}
 
- {/* ✅ 3. ASSIGN AGENT MODAL (Place this at the bottom of the section) */}
+    {/* Assign Agent Modal */}
     {isAssignModalOpen && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-          <h3 className="text-xl font-bold text-Brown mb-4 text-center">Assign Agent</h3>
+          <h3 className="text-xl font-bold text-Brown mb-4 text-center">
+            Assign Agent
+          </h3>
           <p className="text-sm text-gray-600 mb-4 text-center">
-            Assigning errand: <span className="font-bold">{selectedErrand?.title}</span>
+            Assigning errand:{" "}
+            <span className="font-bold">{selectedErrand?.title}</span>
           </p>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Agent
+            </label>
             <select
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-Brown"
               value={selectedAgentId}
@@ -1639,7 +1668,7 @@ const handleAssignAgentSubmit = async () => {
               <option value="">-- Choose an Agent --</option>
               {agentsList.map((agent) => (
                 <option key={agent._id} value={agent._id}>
-                  {agent.name} ({agent.email})
+                  {agent.name} 
                 </option>
               ))}
             </select>
@@ -1663,7 +1692,6 @@ const handleAssignAgentSubmit = async () => {
         </div>
       </div>
     )}
-
   </section>
 )}
 

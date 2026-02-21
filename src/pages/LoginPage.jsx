@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { BASEURL } from "../constant";
 
-const LoginPage = () => {
+const LoginPage = ({ setCurrentUser }) => {
   const navigate = useNavigate();
 
   // Form state
@@ -55,11 +55,14 @@ const LoginPage = () => {
         }
 
         // ✅ Store user + token in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("currentUser", JSON.stringify(data.user));
-        // localStorage.setItem("user", JSON.stringify(data.user));
-        // Trigger Navbar updates
-        window.dispatchEvent(new Event("storage"));
+   localStorage.setItem("token", data.token);
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
+
+    // Update App state
+    setCurrentUser(data.user);
+
+    // Optional: trigger storage event for other components
+    window.dispatchEvent(new Event("storage"));
 
         // Redirect to dashboard
 

@@ -18,41 +18,33 @@ import { BASEURL } from "./constant";
 import AdminDashboard from './pages/AdminDashboard';
 import AgentDashboard from './pages/AgentDashboard';
 
-
 function App() {
+  // ✅ Define state for current user
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Load current user on app mount (fix Paystack redirect issue)
+  // ✅ Load user from localStorage on app mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      axios.get(`${BASEURL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => {
-        localStorage.setItem("currentUser", JSON.stringify(res.data.user));
-        window.dispatchEvent(new Event("storage")); // optional: triggers components listening for updates
-      })
-      .catch(err => console.error("Failed to fetch user after redirect", err));
+    const savedUser = localStorage.getItem("currentUser");
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
     }
   }, []);
 
   return (
     <Router>
-      <Navbar />
+      <Navbar currentUser={currentUser} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/login" element={<LoginPage/>} />
-        <Route path="/home" element={<HomePage/>} />
-        <Route path="/dashboard" element={<DashboardPage/>} />
-        <Route path="/errands" element={<TrackErrandsSection/>} />
-        <Route path="/AdminDashboard" element={<AdminDashboard/>} />
+        <Route path="/login" element={<LoginPage setCurrentUser={setCurrentUser} />} />
+        <Route path="/signup" element={<SignUpPage setCurrentUser={setCurrentUser} />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/errands" element={<TrackErrandsSection />} />
+        <Route path="/AdminDashboard" element={<AdminDashboard />} />
         <Route path="/agent-dashboard" element={<AgentDashboard />} />
-
-
       </Routes>
     </Router>
   );
