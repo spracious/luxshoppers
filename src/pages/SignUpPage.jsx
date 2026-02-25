@@ -89,7 +89,7 @@ window.dispatchEvent(new Event("storage"));
     console.log("User stored in localStorage:", userData);
 
     setSuccessMessage("Signup successful! Redirecting...");
-    setTimeout(() => navigate("/dashboard"), 2000); // Redirect after 2 seconds
+    setTimeout(() => navigate("/login"), 2000); // Redirect after 2 seconds
   } catch (error) {
     console.error("Signup Error:", error.message);
     setErrors({ apiError: error.message });
