@@ -45,7 +45,7 @@ useEffect(() => {
           // ✅ Formats the 5% value to Naira (e.g., ₦5,000.00)
           count: `₦${(data.totalCommission || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`,
           color: "text-green-600",
-          description: "5% of completed errands", // Updated text
+          description: "Total delivery earnings", // Updated text
         },
         {
           title: "Completed Errands",
@@ -112,15 +112,6 @@ useEffect(() => {
   fetchTasks();
 }, [activeSection, taskPage]);
 
-  const notifications = [
-    { id: 1, title: "New orders are available for review.", sender: "Admin", status: "unattended" },
-    { id: 2, title: "Your last task was marked completed.", sender: "System", status: "executed" },
-    { id: 3, title: "Team meeting at 3:00 PM.", sender: "Reminder", status: "pending" },
-  ];
-
-  const filteredNotifications = notifications.filter(
-    (notif) => notif.status === activeMessageTab.toLowerCase()
-  );
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -328,9 +319,9 @@ useEffect(() => {
                       </p>
                     </div>
                     {/* <div>
-                      <p className="text-xs text-gray-500 uppercase font-bold">Reference</p>
+                      <p className="text-xs text-gray-500 uppercase font-bold">Delivery</p>
                       <p className="text-xs font-mono text-gray-600 break-all">
-                        {selectedActivity.paymentReference || "N/A"}
+                        {selectedActivity.DELIVERY_CHARGES || "N/A"}
                       </p>
                     </div> */}
                   </div>

@@ -82,7 +82,7 @@ const SignUpPage = () => {
     };
 
 localStorage.setItem("currentUser", JSON.stringify(userData));
-setCurrentUser(userData);
+// setCurrentUser(userData);
 window.dispatchEvent(new Event("storage"));
 
 

@@ -1830,7 +1830,7 @@ const handleAssignAgentSubmit = async () => {
                   <td className="px-4 py-3 border-b border-gray-200 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${
                       item.status === 'success' || item.status === 'completed' || item.status === 'active' 
-                        ? 'bg-green text-green-700' 
+                        ? 'bg-green text-white' 
                         : item.status === 'failed' || item.status === 'overdue'
                         ? 'bg-red-100 text-red-700'
                         : 'bg-yellow-100 text-yellow-700'
